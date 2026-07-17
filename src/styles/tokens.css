@@ -1,0 +1,29 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap');
+
+:root {
+  --ink: #14171c;
+  --ink-soft: #1d2129;
+  --slate: #2a3138;
+  --bone: #ede7da;
+  --bone-dim: #cfc8b6;
+  --brass: #a9814b;
+  --brass-bright: #c9a06a;
+  --pine: #3e4c3a;
+  --pine-bright: #7c9a72;
+
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body: 'Inter', -apple-system, sans-serif;
+  --font-mono: 'Space Mono', monospace;
+
+  --gutter: clamp(20px, 4vw, 64px);
+  --radius-sm: 3px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ink);
+  color: var(--bone);
+  font-family: var(--font-body);
+}
