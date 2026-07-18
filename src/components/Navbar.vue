@@ -2,19 +2,19 @@
   <header class="nav">
     <div class="nav__inner">
       <RouterLink class="nav__mark" to="/">
-        <span class="nav__mark-glyph">M</span>
+        <span class="nav__mark-glyph">T</span>
         <span class="nav__mark-word">Tawi Properties</span>
       </RouterLink>
 
       <nav class="nav__links">
         <RouterLink to="/listings">Listings</RouterLink>
-        <RouterLink to="/areas">Areas</RouterLink>
-        <RouterLink to="/agents">Agents</RouterLink>
-        <RouterLink to="/about">About</RouterLink>
+        <RouterLink to="/sell">Sell</RouterLink>
+        <RouterLink to="/buy">Buy</RouterLink>
+        <RouterLink to="/rent">Rent</RouterLink>
       </nav>
 
       <div class="nav__actions">
-        <RouterLink class="nav__ghost" to="/sign-in">Sign in</RouterLink>
+        <RouterLink class="nav__ghost" to="/signup">Sign in</RouterLink>
         <RouterLink class="nav__cta" to="/list-property">List a property</RouterLink>
       </div>
 
@@ -25,9 +25,9 @@
 
     <div class="nav__mobile" v-if="menuOpen">
       <RouterLink to="/listings" @click="menuOpen = false">Listings</RouterLink>
-      <RouterLink to="/areas" @click="menuOpen = false">Areas</RouterLink>
-      <RouterLink to="/agents" @click="menuOpen = false">Agents</RouterLink>
-      <RouterLink to="/about" @click="menuOpen = false">About</RouterLink>
+      <RouterLink to="/sell" @click="menuOpen = false">Sell</RouterLink>
+      <RouterLink to="/Buy" @click="menuOpen = false">Buy</RouterLink>
+      <RouterLink to="/Rent" @click="menuOpen = false">Rent</RouterLink>
       <RouterLink class="nav__cta" to="/list-property" @click="menuOpen = false">List a property</RouterLink>
     </div>
   </header>

@@ -6,15 +6,15 @@
       <div class="search-strip__inner">
         <div class="field">
           <label>Location</label>
-          <input type="text" placeholder="Karen, Kilimani, Westlands..." />
+          <input type="text" placeholder="Choose a location..." />
         </div>
         <div class="field">
           <label>Price range</label>
-          <input type="text" placeholder="KES 8M — 25M" />
+          <input type="text" placeholder="KES ....." />
         </div>
         <div class="field">
           <label>Type</label>
-          <input type="text" placeholder="Apartment, townhouse, land..." />
+          <input type="text" placeholder="Apartment, Rental, land..." />
         </div>
         <button class="search-strip__submit">Search</button>
       </div>
@@ -29,14 +29,14 @@ import PropertyHero from '../components/PropertyHero.vue'
 <style scoped>
 .home {
   background: var(--ink);
-  min-height: 100vh;
+  min-height: 150vh;
 }
 
 .search-strip {
   position: relative;
-  z-index: 10;
+  z-index: 20;
   margin: 0 var(--gutter);
-  transform: translateY(-34px);
+  transform: translateY(-50px);
 }
 
 .search-strip__inner {
