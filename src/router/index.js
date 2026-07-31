@@ -3,6 +3,7 @@ import HomeView from '../views/Homepage.vue'
 import SignUpView from '../views/Signup.vue'
 import Login from '../views/Login.vue'
 import Admin from '../views/Admin.vue'
+import Listaproperty from '../views/Listaproperty.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -26,6 +27,11 @@ const router = createRouter({
       path: '/admin',
       name: 'admin',
       component: Admin,
+    },
+    {
+      path: '/list-property',
+      name: 'list-property',
+      component: Listaproperty,
     }
   ],
 })
