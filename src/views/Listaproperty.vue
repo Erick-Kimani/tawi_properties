@@ -1,19 +1,49 @@
 <template>
   <div class="list-property">
-    <div class="list-property__card">
-      <div class="list-property__header">
+    <div class="list-property__layout">
+      <!-- Explanatory panel -->
+      <div class="list-property__intro">
         <RouterLink class="list-property__mark" to="/">
           <span class="list-property__mark-glyph">T</span>
         </RouterLink>
         <p class="list-property__eyebrow">Owners &amp; agents</p>
-        <h1 class="list-property__title">List your property</h1>
-        <p class="list-property__sub">
-          Tell us about your property and our team will review it for a featured
-          placement on Tawi Properties.
+        <h1 class="list-property__intro-title">
+          Put your property in front of buyers and tenants who are ready to move
+        </h1>
+        <p class="list-property__intro-sub">
+          Tawi Properties lets you add your property directly to the app. Register
+          a few details below — the type of property, your contact information,
+          price range and location — and our team will review it for a featured
+          placement so serious buyers and tenants can find it.
         </p>
+
+        <ul class="list-property__benefits">
+          <li>
+            <span class="list-property__benefit-mark">01</span>
+            Reach people actively searching for flats, rentals, land and houses
+          </li>
+          <li>
+            <span class="list-property__benefit-mark">02</span>
+            No agent required — register the property yourself in minutes
+          </li>
+          <li>
+            <span class="list-property__benefit-mark">03</span>
+            Our team reviews every submission before it goes live
+          </li>
+        </ul>
       </div>
 
-      <form v-if="!submitted" class="list-property__form" @submit.prevent="handleSubmit">
+      <!-- Registration card -->
+      <div class="list-property__card">
+        <div class="list-property__header">
+          <p class="list-property__eyebrow list-property__eyebrow--card">Register your property</p>
+          <h2 class="list-property__title">Property details</h2>
+          <p class="list-property__sub">
+            Fill in the form below to submit your property for review.
+          </p>
+        </div>
+
+        <form v-if="!submitted" class="list-property__form" @submit.prevent="handleSubmit">
         <div class="field">
           <label for="type">Property type</label>
           <select id="type" v-model="form.type" required>
@@ -127,6 +157,7 @@
           <RouterLink class="btn btn--primary" to="/">Back to home</RouterLink>
         </div>
       </div>
+      </div>
     </div>
   </div>
 </template>
@@ -221,25 +252,25 @@ function resetForm() {
   justify-content: center;
   background-image:
     linear-gradient(rgba(20, 23, 28, 0.88), rgba(20, 23, 28, 0.9)),
-    url('/images/Picture2.jpg');
+    url('/images/Picture1.jpg');
   background-size: cover;
   background-position: center;
-  padding: 130px 20px 60px;
+  padding: 130px var(--gutter) 60px;
 }
 
-.list-property__card {
+.list-property__layout {
   width: 100%;
-  max-width: 560px;
-  background: var(--slate);
-  border: 1px solid rgba(169, 129, 75, 0.2);
-  border-radius: 6px;
-  padding: 40px 36px 44px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  max-width: 1180px;
+  display: grid;
+  grid-template-columns: 1fr 480px;
+  gap: 64px;
+  align-items: center;
 }
 
-.list-property__header {
-  text-align: center;
-  margin-bottom: 32px;
+/* ---------- Intro panel (left) ---------- */
+.list-property__intro {
+  color: var(--bone);
+  padding-right: 12px;
 }
 
 .list-property__mark {
@@ -249,7 +280,7 @@ function resetForm() {
   align-items: center;
   justify-content: center;
   border: 1px solid var(--brass);
-  margin-bottom: 20px;
+  margin-bottom: 24px;
   text-decoration: none;
 }
 
@@ -257,6 +288,73 @@ function resetForm() {
   font-family: var(--font-display);
   font-size: 18px;
   color: var(--brass-bright);
+}
+
+.list-property__intro-title {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(28px, 3.2vw, 42px);
+  line-height: 1.25;
+  color: var(--bone);
+  margin: 0 0 18px;
+  max-width: 520px;
+}
+
+.list-property__intro-sub {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--bone-dim);
+  margin: 0 0 32px;
+  max-width: 460px;
+}
+
+.list-property__benefits {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 460px;
+}
+
+.list-property__benefits li {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--bone);
+}
+
+.list-property__benefit-mark {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--brass-bright);
+  border: 1px solid rgba(169, 129, 75, 0.4);
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+}
+
+/* ---------- Registration card (right) ---------- */
+.list-property__card {
+  width: 100%;
+  background: var(--slate);
+  border: 1px solid rgba(169, 129, 75, 0.2);
+  border-radius: 6px;
+  padding: 40px 36px 44px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+
+.list-property__header {
+  text-align: left;
+  margin-bottom: 28px;
 }
 
 .list-property__eyebrow {
@@ -268,10 +366,14 @@ function resetForm() {
   margin: 0 0 10px;
 }
 
+.list-property__eyebrow--card {
+  margin-bottom: 8px;
+}
+
 .list-property__title {
   font-family: var(--font-display);
   font-weight: 500;
-  font-size: 28px;
+  font-size: 26px;
   color: var(--bone);
   margin: 0 0 10px;
 }
@@ -474,6 +576,25 @@ function resetForm() {
   color: var(--bone-dim);
 }
 .btn--ghost:hover { color: var(--bone); border-color: var(--brass); }
+
+@media (max-width: 980px) {
+  .list-property__layout {
+    grid-template-columns: 1fr;
+    gap: 40px;
+    max-width: 560px;
+  }
+
+  .list-property__intro {
+    padding-right: 0;
+    text-align: center;
+  }
+
+  .list-property__mark { margin-left: auto; margin-right: auto; }
+  .list-property__intro-title,
+  .list-property__intro-sub { max-width: none; }
+  .list-property__benefits { max-width: none; }
+  .list-property__benefits li { text-align: left; }
+}
 
 @media (max-width: 720px) {
   .field-row { flex-direction: column; }
