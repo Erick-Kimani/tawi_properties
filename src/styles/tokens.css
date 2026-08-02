@@ -1,29 +1,111 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&family=Playfair+Display:wght@400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --ink: #14171c;
-  --ink-soft: #1d2129;
-  --slate: #2a3138;
-  --bone: #ede7da;
-  --bone-dim: #cfc8b6;
-  --brass: #a9814b;
-  --brass-bright: #c9a06a;
-  --pine: #3e4c3a;
-  --pine-bright: #7c9a72;
+  /* core palette */
+  --ink: #0f1318;
+  --ink-soft: #1e2834;
+  --slate: #2f3a48;
+  --bone: #f5efe9;
+  --bone-dim: #d8cfc3;
+  --brass: #b08e5b;
+  --brass-bright: #d1b27f;
+  --pine: #3f5447;
+  --pine-bright: #7ea27f;
+  --coral: #dd7f75;
+  --sky: #7bb7d7;
+  --pearl: #f8f4ef;
 
-  --font-display: 'Fraunces', Georgia, serif;
-  --font-body: 'Inter', -apple-system, sans-serif;
-  --font-mono: 'Space Mono', monospace;
+  /* typography */
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-heading: 'Fraunces', Georgia, serif;
+  --font-body: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'Space Mono', ui-monospace, monospace;
 
+  /* spacing */
   --gutter: clamp(20px, 4vw, 64px);
-  --radius-sm: 3px;
+  --radius-sm: 6px;
+  --radius-md: 18px;
+  --radius-lg: 28px;
+  --shadow-soft: 0 18px 48px rgba(0, 0, 0, 0.2);
+  --shadow-card: 0 16px 40px rgba(0, 0, 0, 0.18);
+
+  /* accent and gradients */
+  --accent-glow: linear-gradient(135deg, rgba(208, 169, 118, 0.95), rgba(130, 166, 130, 0.9));
+  --accent-soft: linear-gradient(135deg, rgba(123, 183, 214, 0.95), rgba(221, 127, 119, 0.92));
+  --border-glow: rgba(255, 255, 255, 0.12);
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
 
 body {
   margin: 0;
-  background: var(--ink);
+  min-height: 100vh;
+  background: radial-gradient(circle at top left, rgba(208, 169, 118, 0.12), transparent 24%),
+    radial-gradient(circle at bottom right, rgba(130, 166, 130, 0.14), transparent 28%),
+    var(--ink);
   color: var(--bone);
   font-family: var(--font-body);
+  line-height: 1.6;
+  text-rendering: optimizeLegibility;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+::selection {
+  background: rgba(209, 169, 118, 0.35);
+  color: var(--ink);
+}
+
+.heading-accent {
+  color: var(--bone);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.card-surface {
+  background: rgba(19, 26, 34, 0.94);
+  border: 1px solid var(--border-glow);
+  box-shadow: var(--shadow-card);
+  border-radius: var(--radius-md);
+}
+
+.text-glow {
+  text-shadow: 0 8px 24px rgba(176, 131, 75, 0.28);
+}
+
+.glow-border {
+  border-image: var(--accent-glow) 1;
+  border-width: 1px;
+  border-style: solid;
+}
+
+.callout {
+  padding: 1.25rem 1.5rem;
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.small-text {
+  font-size: 0.95rem;
+  color: var(--bone-dim);
 }
