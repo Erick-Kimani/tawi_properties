@@ -112,6 +112,17 @@
         </div>
 
         <div class="field">
+          <label>
+            Pin exact location on map <span class="field__optional">(optional, but recommended)</span>
+          </label>
+          <PropertyMap
+            mode="picker"
+            v-model="pin"
+            height="280px"
+          />
+        </div>
+
+        <div class="field">
           <label for="description">
             Description <span class="field__optional">(optional)</span>
           </label>
@@ -165,6 +176,7 @@
 <script setup>
 import { reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import PropertyMap from '@/components/PropertyMap.vue'
 
 const STORAGE_KEY = 'tawi_admin_feature_requests'
 
@@ -184,6 +196,7 @@ function blankForm() {
 }
 
 const form = reactive(blankForm())
+const pin = ref(null) // { lat, lng } | null — set via the PropertyMap picker
 const submitting = ref(false)
 const submitted = ref(false)
 const error = ref('')
@@ -222,6 +235,8 @@ function handleSubmit() {
       existing.unshift({
         id: makeId(),
         ...form,
+        latitude: pin.value ? pin.value.lat : null,
+        longitude: pin.value ? pin.value.lng : null,
         status: 'pending',
         submittedAt: new Date().toISOString().slice(0, 10)
       })
@@ -238,6 +253,7 @@ function handleSubmit() {
 
 function resetForm() {
   Object.assign(form, blankForm())
+  pin.value = null
   submitted.value = false
   error.value = ''
 }

@@ -97,5 +97,5 @@ import PropertyHero from '../components/PropertyHero.vue'
   .search-strip { transform: none; margin: 24px 20px 0; }
   .field { border-right: none; border-bottom: 1px solid rgba(237, 231, 218, 0.08); }
   .search-strip__submit { width: 100%; padding: 16px; }
-}
+  }
 </style>

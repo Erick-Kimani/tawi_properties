@@ -11,6 +11,7 @@
         <RouterLink to="/buy">Buy</RouterLink>
         <RouterLink to="/rent">Rent</RouterLink>
         <RouterLink to="/admin">Admin</RouterLink>
+        <RouterLink to="/property-map">Map</RouterLink>
       </nav>
 
       <div class="nav__actions">
@@ -28,6 +29,7 @@
       <RouterLink to="/admin" @click="menuOpen = false">Admin</RouterLink>
       <RouterLink to="/buy" @click="menuOpen = false">Buy</RouterLink>
       <RouterLink to="/rent" @click="menuOpen = false">Rent</RouterLink>
+      <RouterLink to="/property-map" @click="menuOpen = false">Map</RouterLink>
       <RouterLink class="nav__cta" to="/list-property" @click="menuOpen = false">List a property</RouterLink>
     </div>
   </header>

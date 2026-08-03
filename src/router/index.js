@@ -4,6 +4,7 @@ import SignUpView from '../views/Signup.vue'
 import Login from '../views/Login.vue'
 import Admin from '../views/Admin.vue'
 import Listaproperty from '../views/Listaproperty.vue'
+import PropertyMap from '../components/PropertyMap.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -32,6 +33,11 @@ const router = createRouter({
       path: '/list-property',
       name: 'list-property',
       component: Listaproperty,
+    },
+    {
+      path: '/property-map',
+      name: 'property-map',
+      component: PropertyMap,
     }
   ],
 })

@@ -21,6 +21,19 @@
         </div>
       </div>
 
+      <!-- Overview map: every submission that has a pinned location -->
+      <div class="map-overview" v-if="pinnedSubmissions.length">
+        <div class="map-overview__header">
+          <h3>Pinned locations</h3>
+          <span class="map-overview__count">{{ pinnedSubmissions.length }} of {{ submissions.length }} pinned</span>
+        </div>
+        <PropertyMap
+          mode="display"
+          :markers="pinnedSubmissions"
+          height="320px"
+        />
+      </div>
+
       <!-- Controls: type filter, search, add -->
       <div class="controls">
         <div class="controls__filters">
@@ -86,13 +99,23 @@
                 <span class="contact-line contact-line--dim">{{ row.phone }}</span>
               </td>
               <td>{{ row.priceRange }}</td>
-              <td>{{ row.location }}</td>
+              <td>
+                {{ row.location }}
+                <span v-if="hasPin(row)" class="pin-flag" title="Coordinates pinned">📍</span>
+              </td>
               <td>
                 <span class="status" :class="'status--' + row.status">
                   {{ row.status === 'featured' ? 'Featured' : 'Pending' }}
                 </span>
               </td>
               <td class="col-actions">
+                <button
+                  type="button"
+                  class="btn btn--ghost"
+                  @click="editSubmission(row)"
+                >
+                  Edit
+                </button>
                 <button
                   type="button"
                   class="btn btn--ghost"
@@ -122,7 +145,7 @@
     <div class="modal-backdrop" v-if="showForm" @click.self="closeForm">
       <div class="modal">
         <div class="modal__header">
-          <h2>New feature request</h2>
+          <h2>{{ editingId ? 'Edit submission' : 'New feature request' }}</h2>
           <button type="button" class="modal__close" @click="closeForm" aria-label="Close">×</button>
         </div>
 
@@ -162,6 +185,11 @@
           </div>
 
           <div class="field">
+            <label>Pin exact location on map <span class="field__optional">(optional)</span></label>
+            <PropertyMap mode="picker" v-model="pin" height="260px" />
+          </div>
+
+          <div class="field">
             <label for="photo">Property photo <span class="field__optional">(optional)</span></label>
             <input id="photo" type="file" accept="image/*" @change="handlePhoto" />
             <div class="photo-preview" v-if="form.photo">
@@ -172,7 +200,7 @@
 
           <div class="modal__actions">
             <button type="button" class="btn btn--ghost" @click="closeForm">Cancel</button>
-            <button type="submit" class="btn btn--primary">Save submission</button>
+            <button type="submit" class="btn btn--primary">{{ editingId ? 'Save changes' : 'Save submission' }}</button>
           </div>
         </form>
       </div>
@@ -182,6 +210,7 @@
 
 <script setup>
 import { ref, reactive, computed, watch, onMounted } from 'vue'
+import PropertyMap from '@/components/PropertyMap.vue'
 
 const STORAGE_KEY = 'tawi_admin_feature_requests'
 
@@ -206,6 +235,8 @@ function blankForm() {
 }
 
 const form = reactive(blankForm())
+const pin = ref(null) // { lat, lng } | null — set via the PropertyMap picker
+const editingId = ref(null) // set when the modal is opened to edit an existing row
 
 function makeId() {
   return (crypto.randomUUID && crypto.randomUUID()) || `${Date.now()}-${Math.random().toString(16).slice(2)}`
@@ -221,6 +252,8 @@ function seedData() {
       phone: '+254 712 345 678',
       priceRange: 'KES 18M – 22M',
       location: 'Karen, Nairobi',
+      latitude: -1.3197,
+      longitude: 36.7076,
       photo: '/images/Picture3.jpg',
       status: 'featured',
       submittedAt: '2026-07-18'
@@ -233,6 +266,8 @@ function seedData() {
       phone: '+254 700 112 233',
       priceRange: 'KES 9.5M',
       location: 'Kilimani, Nairobi',
+      latitude: -1.2905,
+      longitude: 36.7873,
       photo: '',
       status: 'pending',
       submittedAt: '2026-07-22'
@@ -245,6 +280,8 @@ function seedData() {
       phone: '+254 733 998 211',
       priceRange: 'KES 65,000 / month',
       location: 'Westlands, Nairobi',
+      latitude: -1.2673,
+      longitude: 36.8055,
       photo: '/images/Picture2.jpg',
       status: 'pending',
       submittedAt: '2026-07-25'
@@ -257,6 +294,8 @@ function seedData() {
       phone: '+254 720 556 890',
       priceRange: 'KES 4M / half acre',
       location: 'Kitengela',
+      latitude: -1.4744,
+      longitude: 36.9583,
       photo: '',
       status: 'featured',
       submittedAt: '2026-07-11'
@@ -295,6 +334,23 @@ const stats = computed(() => {
   ]
 })
 
+const pinnedSubmissions = computed(() =>
+  submissions.value
+    .filter((s) => typeof s.latitude === 'number' && typeof s.longitude === 'number')
+    .map((s) => ({
+      id: s.id,
+      lat: s.latitude,
+      lng: s.longitude,
+      title: s.location,
+      subtitle: `${s.type} · ${s.fullName}`,
+      price: s.priceRange
+    }))
+)
+
+function hasPin(row) {
+  return typeof row.latitude === 'number' && typeof row.longitude === 'number'
+}
+
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
   return submissions.value
@@ -310,6 +366,23 @@ const filtered = computed(() => {
 
 function openForm() {
   Object.assign(form, blankForm())
+  pin.value = null
+  editingId.value = null
+  showForm.value = true
+}
+
+function editSubmission(row) {
+  Object.assign(form, {
+    type: row.type,
+    fullName: row.fullName,
+    email: row.email,
+    phone: row.phone,
+    priceRange: row.priceRange,
+    location: row.location,
+    photo: row.photo || ''
+  })
+  pin.value = hasPin(row) ? { lat: row.latitude, lng: row.longitude } : null
+  editingId.value = row.id
   showForm.value = true
 }
 
@@ -328,12 +401,23 @@ function handlePhoto(event) {
 }
 
 function submitForm() {
-  submissions.value.unshift({
-    id: makeId(),
-    ...form,
-    status: 'pending',
-    submittedAt: new Date().toISOString().slice(0, 10)
-  })
+  const coords = {
+    latitude: pin.value ? pin.value.lat : null,
+    longitude: pin.value ? pin.value.lng : null
+  }
+
+  if (editingId.value) {
+    const existing = submissions.value.find((s) => s.id === editingId.value)
+    if (existing) Object.assign(existing, form, coords)
+  } else {
+    submissions.value.unshift({
+      id: makeId(),
+      ...form,
+      ...coords,
+      status: 'pending',
+      submittedAt: new Date().toISOString().slice(0, 10)
+    })
+  }
   closeForm()
 }
 
@@ -450,6 +534,38 @@ function formatDate(dateStr) {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--bone-dim);
+}
+
+/* Overview map */
+.map-overview {
+  margin-bottom: 28px;
+}
+
+.map-overview__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.map-overview__header h3 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 16px;
+  color: var(--bone);
+  margin: 0;
+}
+
+.map-overview__count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--bone-dim);
+}
+
+.pin-flag {
+  margin-left: 4px;
+  font-size: 11px;
 }
 
 /* Controls */
