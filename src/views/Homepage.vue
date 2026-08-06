@@ -26,7 +26,7 @@
 
 <script setup>
 import PropertyHero from '../components/PropertyHero.vue'
-import PropertyCategories from '../components/PropertyCategories.vue'
+import PropertyCategories from './Propertycategories.vue'
 </script>
 
 <style scoped>

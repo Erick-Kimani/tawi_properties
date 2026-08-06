@@ -6,7 +6,8 @@ import Admin from '../views/Admin.vue'
 import Listaproperty from '../views/Listaproperty.vue'
 import PropertyMap from '../components/PropertyMap.vue'
 import CategoryListing from '../views/Categorylisting.vue'
-//import Propertycategories from '../viewsPropertycategories.vue'
+import BuyPage from '../views/Buypage.vue'
+import RentPage from '../views/Rentpage.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -42,15 +43,20 @@ const router = createRouter({
       component: PropertyMap,
     },
     {
+      path: '/buy',
+      name: 'buy',
+      component: BuyPage,
+    },
+    {
+      path: '/rent',
+      name: 'rent',
+      component: RentPage,
+    },
+    {
       path: '/category/:slug',
       name: 'category',
       component: CategoryListing,
       props: true,
-    },
-    {
-      path: '/property-categories',
-      name: 'property-categories',
-      component: Propertycategories,
     }
   ],
 })

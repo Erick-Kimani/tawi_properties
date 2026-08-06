@@ -1,4 +1,4 @@
-<!-- <template>
+<template>
   <section class="categories">
     <div class="categories__head">
       <p class="categories__eyebrow">Browse by category</p>
@@ -36,7 +36,7 @@
 
 <script setup>
 import { RouterLink } from 'vue-router'
-import { categories } from '../data/categories.js'
+import { categories } from '../stores/Categories.js'
 </script>
 
 <style scoped>
@@ -95,24 +95,29 @@ import { categories } from '../data/categories.js'
   background-size: cover;
   background-position: center;
   overflow: hidden;
-  border: 1px solid rgba(237, 231, 218, 0.1);
-  transition: border-color 0.25s ease, transform 0.25s ease;
+  border-radius: 24px;
+  border: 1px solid rgba(237, 231, 218, 0.14);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.24);
+  transition: border-color 0.25s ease, transform 0.3s ease, box-shadow 0.3s ease, filter 0.3s ease;
 }
 
 .cat-card:hover {
-  border-color: rgba(209, 178, 127, 0.55);
-  transform: translateY(-4px);
+  border-color: rgba(209, 178, 127, 0.65);
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.34);
+  filter: saturate(1.08);
 }
 
 .cat-card__scrim {
   position: absolute;
   inset: 0;
   background: linear-gradient(180deg, rgba(15, 19, 24, 0.05) 0%, rgba(15, 19, 24, 0.35) 45%, rgba(15, 19, 24, 0.92) 100%);
-  transition: background 0.25s ease;
+  transition: background 0.3s ease, transform 0.3s ease;
 }
 
 .cat-card:hover .cat-card__scrim {
-  background: linear-gradient(180deg, rgba(15, 19, 24, 0.15) 0%, rgba(15, 19, 24, 0.45) 45%, rgba(15, 19, 24, 0.94) 100%);
+  background: linear-gradient(180deg, rgba(15, 19, 24, 0.06) 0%, rgba(15, 19, 24, 0.42) 45%, rgba(15, 19, 24, 0.96) 100%);
+  transform: scale(1.02);
 }
 
 .cat-card__eyebrow {
@@ -182,4 +187,4 @@ import { categories } from '../data/categories.js'
   .categories__grid { grid-template-columns: 1fr; }
   .cat-card { height: 220px; }
 }
-</style> -->
+</style>

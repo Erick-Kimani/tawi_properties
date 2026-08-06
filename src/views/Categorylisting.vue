@@ -51,7 +51,7 @@
 <script setup>
 import { computed } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
-import { getCategoryBySlug } from '../data/categories.js'
+import { getCategoryBySlug } from '../stores/Categories.js'
 
 const STORAGE_KEY = 'tawi_admin_feature_requests'
 

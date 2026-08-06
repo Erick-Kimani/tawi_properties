@@ -7,7 +7,6 @@
       </RouterLink>
 
       <nav class="nav__links">
-        <RouterLink to="/listings">Listings</RouterLink>
         <RouterLink to="/buy">Buy</RouterLink>
         <RouterLink to="/rent">Rent</RouterLink>
         <RouterLink to="/admin">Admin</RouterLink>
@@ -25,7 +24,6 @@
     </div>
 
     <div class="nav__mobile" v-if="menuOpen">
-      <RouterLink to="/listings" @click="menuOpen = false">Listings</RouterLink>
       <RouterLink to="/admin" @click="menuOpen = false">Admin</RouterLink>
       <RouterLink to="/buy" @click="menuOpen = false">Buy</RouterLink>
       <RouterLink to="/rent" @click="menuOpen = false">Rent</RouterLink>

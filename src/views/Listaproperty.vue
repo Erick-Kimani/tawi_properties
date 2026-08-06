@@ -180,7 +180,7 @@ import PropertyMap from '@/components/PropertyMap.vue'
 
 const STORAGE_KEY = 'tawi_admin_feature_requests'
 
-const propertyTypes = ['Flat', 'Rental', 'Land', 'House']
+const propertyTypes = ['Flat', 'Rental', 'Land', 'House', 'Commercial']
 
 function blankForm() {
   return {
