@@ -19,17 +19,20 @@
         <button class="search-strip__submit">Search</button>
       </div>
     </section>
+
+    <PropertyCategories />
   </div>
 </template>
 
 <script setup>
 import PropertyHero from '../components/PropertyHero.vue'
+import PropertyCategories from '../components/PropertyCategories.vue'
 </script>
 
 <style scoped>
 .home {
   background: var(--ink);
-  min-height: 150vh;
+  min-height: 100vh;
 }
 
 .search-strip {
