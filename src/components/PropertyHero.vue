@@ -34,7 +34,7 @@ const panels = [
   {
     id: 1,
     label: 'Karen',
-    image: '/images/Picture2.jpg',
+    image: '/images/Picture7.jpg',
     clip: `polygon(0 0, 100% 0, calc(100% - ${skew}px) 100%, 0 100%)`
   },
   {
@@ -46,7 +46,7 @@ const panels = [
   {
     id: 3,
     label: 'Westlands',
-    image:'/images/Picture7.jpg',
+    image:'/images/Picture2.jpg',
     clip: `polygon(${skew}px 0, 100% 0, 100% 100%, 0 100%)`
   }
 ]

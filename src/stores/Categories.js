@@ -20,7 +20,7 @@ export const categories = [
     title: 'Rentals',
     tagline: 'Monthly lets',
     description: 'Furnished and unfurnished homes available on flexible, month-to-month leases.',
-    image: '/images/Picture6.jpg',
+    image: '/images/Picture8.jpg',
     types: ['Rental']
   },
   {

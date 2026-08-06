@@ -17,7 +17,6 @@
     <section class="cat-body">
       <div class="cat-body__head">
         <h2>{{ listings.length }} {{ listings.length === 1 ? 'listing' : 'listings' }}</h2>
-        <RouterLink class="cat-body__list-cta" to="/list-property">+ List a property</RouterLink>
       </div>
 
       <div class="cat-grid" v-if="listings.length">
@@ -37,7 +36,6 @@
       <div class="cat-empty" v-else>
         <p class="cat-empty__title">No {{ category.title.toLowerCase() }} listings yet</p>
         <p class="cat-empty__sub">New properties are reviewed and featured regularly — check back soon, or be the first to list one.</p>
-        <RouterLink class="cat-empty__cta" to="/list-property">List a property</RouterLink>
       </div>
     </section>
   </div>
@@ -201,14 +199,17 @@ const listings = computed(() => {
 
 .listing-card {
   background: var(--ink-soft);
-  border: 1px solid rgba(237, 231, 218, 0.1);
+  border: 4px solid rgba(237, 231, 218, 0.2);
+  border-radius: 29px;
   overflow: hidden;
-  transition: border-color 0.2s ease, transform 0.2s ease;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+  transition: border-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 .listing-card:hover {
-  border-color: rgba(209, 178, 127, 0.5);
-  transform: translateY(-3px);
+  border-color: rgba(3, 227, 247, 0.65);
+  transform: translateY(-6px) scale(1.01);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.3);
 }
 
 .listing-card__media {

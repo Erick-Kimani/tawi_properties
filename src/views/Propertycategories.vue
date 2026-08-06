@@ -96,7 +96,7 @@ import { categories } from '../stores/Categories.js'
   background-position: center;
   overflow: hidden;
   border-radius: 24px;
-  border: 1px solid rgba(237, 231, 218, 0.14);
+  border: 2px solid rgba(237, 231, 218, 0.22);
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.24);
   transition: border-color 0.25s ease, transform 0.3s ease, box-shadow 0.3s ease, filter 0.3s ease;
 }

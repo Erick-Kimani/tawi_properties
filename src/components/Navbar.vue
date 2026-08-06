@@ -10,7 +10,22 @@
         <RouterLink to="/buy">Buy</RouterLink>
         <RouterLink to="/rent">Rent</RouterLink>
         <RouterLink to="/admin">Admin</RouterLink>
-        <RouterLink to="/property-map">Map</RouterLink>
+
+        <div class="nav__dropdown" @mouseleave="dropdownOpen = false">
+          <button
+            class="nav__dropdown-trigger"
+            :class="{ 'nav__dropdown-trigger--active': isMoreActive }"
+            type="button"
+            @click="dropdownOpen = !dropdownOpen"
+          >
+            More
+            <span class="nav__dropdown-chevron">▾</span>
+          </button>
+
+          <div v-if="dropdownOpen" class="nav__dropdown-menu">
+            <RouterLink to="/property-map" @click="dropdownOpen = false">Map</RouterLink>
+          </div>
+        </div>
       </nav>
 
       <div class="nav__actions">
@@ -34,10 +49,14 @@
 </template>
 
 <script setup>
-import { RouterLink } from 'vue-router'
-import { ref } from 'vue'
+import { RouterLink, useRoute } from 'vue-router'
+import { computed, ref } from 'vue'
 
+const route = useRoute()
 const menuOpen = ref(false)
+const dropdownOpen = ref(false)
+
+const isMoreActive = computed(() => route.path.startsWith('/property-map'))
 </script>
 
 <style scoped>
@@ -98,7 +117,9 @@ const menuOpen = ref(false)
   gap: 8px;
 }
 
-.nav__links a {
+.nav__links a,
+.nav__dropdown-trigger {
+  position: relative;
   color: var(--bone-dim);
   text-decoration: none;
   font-size: 14px;
@@ -108,11 +129,84 @@ const menuOpen = ref(false)
   transition: color 0.2s ease, background 0.2s ease;
 }
 
-.nav__links a:hover { color: var(--bone); }
+.nav__links a::after {
+  content: '';
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 4px;
+  height: 1px;
+  background: transparent;
+  transform: scaleX(0.6);
+  transform-origin: center;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
 
-.nav__links a.router-link-active {
-  color: var(--brass-bright);
+.nav__links a:hover,
+.nav__dropdown-trigger:hover { color: var(--bone); }
+
+.nav__links a:hover::after,
+.nav__links a.router-link-active::after,
+.nav__dropdown-trigger--active::after {
+  background: rgba(169, 129, 75, 0.6);
+  transform: scaleX(1);
+}
+
+.nav__links a.router-link-active,
+.nav__dropdown-trigger--active {
+  color: var(--bone);
+  background: rgba(169, 129, 75, 0.1);
+  box-shadow: inset 0 -1px 0 rgba(169, 129, 75, 0.24);
+}
+
+.nav__dropdown {
+  position: relative;
+}
+
+.nav__dropdown-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.nav__dropdown-chevron {
+  font-size: 11px;
+  transition: transform 0.2s ease;
+}
+
+.nav__dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 140px;
+  padding: 8px;
+  background: rgba(20, 23, 28, 0.96);
+  border: 1px solid rgba(169, 129, 75, 0.25);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.nav__dropdown-menu a {
+  color: var(--bone-dim);
+  text-decoration: none;
+  padding: 8px 10px;
+  border-radius: 4px;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.nav__dropdown-menu a:hover {
+  color: var(--bone);
   background: rgba(169, 129, 75, 0.12);
+}
+
+.nav__dropdown-menu a.router-link-active {
+  color: var(--bone);
+  background: rgba(169, 129, 75, 0.16);
 }
 
 .nav__actions {

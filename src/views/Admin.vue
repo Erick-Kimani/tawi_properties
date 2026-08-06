@@ -27,16 +27,27 @@
         </div>
       </div>
 
-      <div class="admin__filters">
-      <button
-        v-for="f in filters"
-        :key="f"
-        class="filter-pill"
-        :class="{ 'filter-pill--active': activeFilter === f }"
-        @click="activeFilter = f"
-      >
-        {{ f }}
-      </button>
+      <div class="admin__toolbar">
+        <div class="admin__search">
+          <input
+            v-model="searchQuery"
+            type="search"
+            placeholder="Search submissions..."
+            aria-label="Search submissions"
+          />
+        </div>
+
+        <div class="admin__filters">
+          <button
+            v-for="f in filters"
+            :key="f"
+            class="filter-pill"
+            :class="{ 'filter-pill--active': activeFilter === f }"
+            @click="activeFilter = f"
+          >
+            {{ f }}
+          </button>
+        </div>
       </div>
 
     <div class="admin__table card-surface" v-if="filteredRows.length">
@@ -214,11 +225,36 @@ function removeRow(id) {
 
 const filters = ['All', 'Featured', 'Pending']
 const activeFilter = ref('All')
+const searchQuery = ref('')
 
 const filteredRows = computed(() => {
-  if (activeFilter.value === 'Featured') return rows.value.filter((r) => r.status === 'featured')
-  if (activeFilter.value === 'Pending') return rows.value.filter((r) => r.status === 'pending')
-  return rows.value
+  let result = rows.value
+
+  if (activeFilter.value === 'Featured') {
+    result = result.filter((r) => r.status === 'featured')
+  } else if (activeFilter.value === 'Pending') {
+    result = result.filter((r) => r.status === 'pending')
+  }
+
+  const query = searchQuery.value.trim().toLowerCase()
+  if (!query) return result
+
+  return result.filter((row) => {
+    const haystack = [
+      row.fullName,
+      row.email,
+      row.phone,
+      row.location,
+      row.type,
+      row.priceRange,
+      row.status
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+
+    return haystack.includes(query)
+  })
 })
 
 const featuredCount = computed(() => rows.value.filter((r) => r.status === 'featured').length)
@@ -315,10 +351,42 @@ const pendingCount = computed(() => rows.value.filter((r) => r.status === 'pendi
   margin-top: 4px;
 }
 
+.admin__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.admin__search {
+  flex: 1 1 260px;
+}
+
+.admin__search input {
+  width: 100%;
+  border: 1px solid rgba(237, 231, 218, 0.18);
+  background: var(--ink-soft);
+  color: var(--bone);
+  padding: 10px 14px;
+  font-size: 14px;
+  font-family: var(--font-body);
+}
+
+.admin__search input::placeholder {
+  color: rgba(237, 231, 218, 0.38);
+}
+
+.admin__search input:focus {
+  outline: none;
+  border-color: rgba(209, 178, 127, 0.55);
+}
+
 .admin__filters {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
-  margin-bottom: 20px;
 }
 
 .filter-pill {
@@ -500,5 +568,7 @@ tbody tr:hover { background: rgba(237, 231, 218, 0.03); }
   .admin-hero__inner { padding-bottom: 28px; }
   .admin__stats { width: 100%; justify-content: space-between; }
   .stat { flex: 1; min-width: 0; }
+  .admin__toolbar { align-items: stretch; }
+  .admin__search { flex-basis: 100%; }
 }
 </style>
