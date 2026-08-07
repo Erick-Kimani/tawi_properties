@@ -1,7 +1,7 @@
 <template>
   <div class="admin">
-    <section class="admin-hero">
-      <div class="admin-hero__inner">
+    <section class="admin-hero" ref="heroRef">
+      <div class="admin-hero__inner" ref="heroInnerRef">
         <p class="admin-hero__eyebrow">Dashboard</p>
         <h1 class="admin-hero__title">Property submissions</h1>
         <p class="admin-hero__sub">
@@ -12,7 +12,7 @@
     </section>
 
     <div class="admin__body">
-      <div class="admin__stats">
+      <div class="admin__stats" ref="statsRef">
         <div class="stat">
           <span class="stat__value">{{ rows.length }}</span>
           <span class="stat__label">Total</span>
@@ -27,7 +27,7 @@
         </div>
       </div>
 
-      <div class="admin__toolbar">
+      <div class="admin__toolbar" ref="toolbarRef">
         <div class="admin__search">
           <input
             v-model="searchQuery"
@@ -50,7 +50,7 @@
         </div>
       </div>
 
-    <div class="admin__table card-surface" v-if="filteredRows.length">
+    <div class="admin__table card-surface" ref="tableRef" v-if="filteredRows.length">
       <table>
         <thead>
           <tr>
@@ -65,7 +65,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="row in filteredRows" :key="row.id">
+          <tr v-for="row in filteredRows" :key="row.id" :data-row-id="row.id">
             <td>
               <span class="badge" :class="'badge--' + row.type.toLowerCase()">{{ row.type }}</span>
             </td>
@@ -104,7 +104,7 @@
       </table>
     </div>
 
-    <div class="admin__empty card-surface" v-else>
+    <div class="admin__empty card-surface" ref="emptyRef" v-else>
       <p>No submissions match this filter yet.</p>
     </div>
     </div>
@@ -112,7 +112,8 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, nextTick, watch } from 'vue'
+import { animate } from 'animejs'
 
 const STORAGE_KEY = 'tawi_admin_feature_requests'
 
@@ -201,6 +202,12 @@ function loadRows() {
 }
 
 const rows = ref(loadRows())
+const heroRef = ref(null)
+const heroInnerRef = ref(null)
+const statsRef = ref(null)
+const toolbarRef = ref(null)
+const tableRef = ref(null)
+const emptyRef = ref(null)
 
 function persist() {
   try {
@@ -210,17 +217,59 @@ function persist() {
   }
 }
 
+function animateRows() {
+  if (!tableRef.value) return
+
+  const rowsInTable = tableRef.value.querySelectorAll('tbody tr')
+  if (!rowsInTable.length) return
+
+  animate({
+    targets: rowsInTable,
+    opacity: [0, 1],
+    translateY: [16, 0],
+    duration: 480,
+    delay: (el, i) => i * 70,
+    easing: 'easeOutQuad'
+  })
+}
+
+function animateStatusPulse(id) {
+  const targetRow = tableRef.value?.querySelector(`[data-row-id="${id}"]`)
+  if (!targetRow) return
+
+  animate({
+    targets: targetRow,
+    scale: [1, 1.01, 1],
+    duration: 420,
+    easing: 'easeOutQuad'
+  })
+}
+
 function setStatus(id, status) {
   const row = rows.value.find((r) => r.id === id)
   if (row) {
     row.status = status
     persist()
+    animateStatusPulse(id)
   }
 }
 
 function removeRow(id) {
   rows.value = rows.value.filter((r) => r.id !== id)
   persist()
+  nextTick(() => {
+    if (filteredRows.value.length) {
+      animateRows()
+    } else if (emptyRef.value) {
+      animate({
+        targets: emptyRef.value,
+        opacity: [0, 1],
+        translateY: [10, 0],
+        duration: 320,
+        easing: 'easeOutQuad'
+      })
+    }
+  })
 }
 
 const filters = ['All', 'Featured', 'Pending']
@@ -259,6 +308,62 @@ const filteredRows = computed(() => {
 
 const featuredCount = computed(() => rows.value.filter((r) => r.status === 'featured').length)
 const pendingCount = computed(() => rows.value.filter((r) => r.status === 'pending').length)
+
+onMounted(() => {
+  nextTick(() => {
+    if (heroInnerRef.value) {
+      animate({
+        targets: heroInnerRef.value,
+        opacity: [0, 1],
+        translateY: [20, 0],
+        duration: 700,
+        easing: 'easeOutExpo'
+      })
+    }
+
+    if (statsRef.value) {
+      const statCards = statsRef.value.querySelectorAll('.stat')
+      animate({
+        targets: statCards,
+        opacity: [0, 1],
+        translateY: [16, 0],
+        delay: (el, i) => i * 80,
+        duration: 500,
+        easing: 'easeOutQuad'
+      })
+    }
+
+    if (toolbarRef.value) {
+      animate({
+        targets: toolbarRef.value,
+        opacity: [0, 1],
+        translateY: [12, 0],
+        duration: 500,
+        easing: 'easeOutQuad'
+      })
+    }
+
+    if (filteredRows.value.length) {
+      animateRows()
+    } else if (emptyRef.value) {
+      animate({
+        targets: emptyRef.value,
+        opacity: [0, 1],
+        translateY: [10, 0],
+        duration: 320,
+        easing: 'easeOutQuad'
+      })
+    }
+  })
+})
+
+watch(filteredRows, () => {
+  nextTick(() => {
+    if (filteredRows.value.length) {
+      animateRows()
+    }
+  })
+}, { flush: 'post' })
 </script>
 
 <style scoped>

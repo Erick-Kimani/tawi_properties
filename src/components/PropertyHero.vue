@@ -28,6 +28,9 @@
 </template>
 
 <script setup>
+import { onMounted } from 'vue'
+import { animate, stagger } from 'animejs'
+
 const skew = 64
 
 const panels = [
@@ -40,7 +43,7 @@ const panels = [
   {
     id: 2,
     label: 'Kilimani',
-    image: 'public/images/Picture1.jpg',
+    image: '/images/Picture1.jpg',
     clip: `polygon(${skew}px 0, 100% 0, calc(100% - ${skew}px) 100%, 0 100%)`
   },
   {
@@ -50,6 +53,24 @@ const panels = [
     clip: `polygon(${skew}px 0, 100% 0, 100% 100%, 0 100%)`
   }
 ]
+
+onMounted(() => {
+  animate('.hero__panel', {
+    opacity: [0, 1],
+    scale: [1.08, 1],
+    delay: stagger(140),
+    duration: 900,
+    ease: 'outQuad'
+  })
+
+  animate('.hero__eyebrow, .hero__headline, .hero__sub, .hero__cta', {
+    opacity: [0, 1],
+    translateY: [18, 0],
+    delay: stagger(90, { start: 300 }),
+    duration: 600,
+    ease: 'outCubic'
+  })
+})
 </script>
 
 <style scoped>

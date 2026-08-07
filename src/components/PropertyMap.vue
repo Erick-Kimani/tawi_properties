@@ -69,8 +69,8 @@ let map = null
 let pickerMarker = null
 const displayMarkers = []
 
-// Free, no-key vector style. See https://openfreemap.org for the full list.
-const STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty'
+// Use a public MapLibre style that reliably loads in the browser.
+const STYLE_URL = 'https://demotiles.maplibre.org/style.json'
 
 function clearDisplayMarkers() {
   displayMarkers.forEach((m) => m.remove())
@@ -155,7 +155,7 @@ onMounted(async () => {
     // Guards against a common Vue layout timing issue: if the container's
     // final size wasn't settled when MapLibre first measured it, tiles can
     // render blank until the map is told to resize.
-    map.resize()
+    requestAnimationFrame(() => map.resize())
     if (props.mode === 'display') {
       renderDisplayMarkers()
     } else if (props.mode === 'picker' && coords.value) {
