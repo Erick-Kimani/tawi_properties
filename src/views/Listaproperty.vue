@@ -115,11 +115,13 @@
           <label>
             Pin exact location on map <span class="field__optional">(optional, but recommended)</span>
           </label>
-          <PropertyMap
-            mode="picker"
-            v-model="pin"
-            height="280px"
-          />
+          <div class="list-property__map-shell">
+            <PropertyMap
+              mode="picker"
+              v-model="pin"
+              height="360px"
+            />
+          </div>
         </div>
 
         <div class="field">
@@ -258,6 +260,26 @@ function resetForm() {
   error.value = ''
 }
 </script>
+
+<style scoped>
+.list-property__map-shell {
+  margin-top: 10px;
+  padding: 8px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(169, 129, 75, 0.2);
+}
+
+.list-property__map-shell :deep(.property-map__stage) {
+  border-radius: 14px;
+}
+
+.list-property__map-shell :deep(.property-map__toolbar) {
+  top: 12px;
+  left: 12px;
+  right: 12px;
+}
+</style>
 
 <style scoped>
 .list-property {
