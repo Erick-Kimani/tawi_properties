@@ -105,11 +105,12 @@ const route = useRoute()
 const props = defineProps({
   mode: {
     type: String,
-    default: 'display', // 'picker' | 'display'
+    default: 'display', // 'picker' | 'display' | 'route'
   },
   // Picker mode: v-model of { lat, lng } | null
+  // Route mode: v-model of [{ lat, lng }, ...] | null
   modelValue: {
-    type: Object,
+    type: [Object, Array],
     default: null,
   },
   // Display mode: [{ id, lat, lng, title, subtitle, price, type }]
@@ -152,7 +153,8 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'marker-click'])
 
 const mapEl = ref(null)
-const coords = ref(props.modelValue)
+const coords = ref(props.modelValue && !Array.isArray(props.modelValue) ? props.modelValue : null)
+const routePoints = ref(Array.isArray(props.modelValue) ? props.modelValue.slice() : [])
 const detectedNavOffset = ref(84) // sane fallback until measured
 
 let navResizeObserver = null
@@ -193,6 +195,7 @@ const searchAttempted = ref(false)
 
 let map = null
 let pickerMarker = null
+const routeMarkers = []
 const displayMarkers = []
 let searchDebounce = null
 let searchAbortController = null
@@ -291,12 +294,98 @@ function selectResult(result) {
     coords.value = { lat: result.lat, lng: result.lng }
     setPickerMarker([result.lng, result.lat])
     emit('update:modelValue', coords.value)
+  } else if (props.mode === 'route') {
+    addRoutePoint({ lat: result.lat, lng: result.lng })
   }
 }
 
 function clearDisplayMarkers() {
   displayMarkers.forEach((m) => m.remove())
   displayMarkers.length = 0
+}
+
+function clearRouteMarkers() {
+  routeMarkers.forEach((m) => m.remove())
+  routeMarkers.length = 0
+}
+
+function updateRouteLine() {
+  if (!map) return
+  const coordinates = routePoints.value.map((point) => [point.lng, point.lat])
+
+  if (!map.getSource('route-line')) {
+    map.addSource('route-line', {
+      type: 'geojson',
+      data: {
+        type: 'Feature',
+        geometry: {
+          type: 'LineString',
+          coordinates,
+        },
+      },
+    })
+
+    map.addLayer({
+      id: 'route-line',
+      type: 'line',
+      source: 'route-line',
+      layout: {
+        'line-join': 'round',
+        'line-cap': 'round',
+      },
+      paint: {
+        'line-color': '#a9814b',
+        'line-width': 4,
+        'line-opacity': 0.9,
+      },
+    })
+  } else {
+    const source = map.getSource('route-line')
+    source.setData({
+      type: 'Feature',
+      geometry: {
+        type: 'LineString',
+        coordinates,
+      },
+    })
+  }
+}
+
+function addRoutePoint(point) {
+  routePoints.value.push(point)
+  setRouteMarker([point.lng, point.lat], routePoints.value.length)
+  updateRouteLine()
+  emit('update:modelValue', routePoints.value.slice())
+}
+
+function setRouteMarker(lngLat, index) {
+  if (!map) return
+  const el = document.createElement('div')
+  el.className = 'property-map__pin property-map__pin--route'
+  el.textContent = index || routeMarkers.length + 1
+  el.style.display = 'flex'
+  el.style.alignItems = 'center'
+  el.style.justifyContent = 'center'
+  el.style.color = '#14171c'
+  el.style.fontSize = '12px'
+  el.style.fontWeight = '700'
+  el.style.textShadow = '0 1px 0 rgba(255,255,255,0.6)'
+
+  const marker = new Marker({ element: el, anchor: 'bottom', draggable: true })
+    .setLngLat(lngLat)
+    .addTo(map)
+
+  marker.on('dragend', () => {
+    const pos = marker.getLngLat()
+    const idx = routeMarkers.indexOf(marker)
+    if (idx !== -1) {
+      routePoints.value[idx] = { lat: pos.lat, lng: pos.lng }
+      updateRouteLine()
+      emit('update:modelValue', routePoints.value.slice())
+    }
+  })
+
+  routeMarkers.push(marker)
 }
 
 function renderDisplayMarkers() {
@@ -393,6 +482,9 @@ onMounted(async () => {
       renderDisplayMarkers()
     } else if (props.mode === 'picker' && coords.value) {
       setPickerMarker([coords.value.lng, coords.value.lat])
+    } else if (props.mode === 'route' && routePoints.value.length) {
+      routePoints.value.forEach((point, idx) => setRouteMarker([point.lng, point.lat], idx + 1))
+      updateRouteLine()
     }
   })
 
@@ -402,6 +494,11 @@ onMounted(async () => {
       coords.value = { lat, lng }
       setPickerMarker([lng, lat])
       emit('update:modelValue', coords.value)
+    })
+  } else if (props.mode === 'route') {
+    map.on('click', (e) => {
+      const { lng, lat } = e.lngLat
+      addRoutePoint({ lat, lng })
     })
   }
 })
@@ -417,8 +514,17 @@ watch(
 watch(
   () => props.modelValue,
   (val) => {
-    coords.value = val
-    if (map && val) setPickerMarker([val.lng, val.lat])
+    if (props.mode === 'route') {
+      routePoints.value = Array.isArray(val) ? val.slice() : []
+      if (map) {
+        clearRouteMarkers()
+        routePoints.value.forEach((point, idx) => setRouteMarker([point.lng, point.lat], idx + 1))
+        updateRouteLine()
+      }
+    } else {
+      coords.value = val
+      if (map && val) setPickerMarker([val.lng, val.lat])
+    }
   }
 )
 
