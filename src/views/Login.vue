@@ -142,6 +142,7 @@
 <script setup>
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import authService from '@/services/authService'
 
 const router = useRouter()
 
@@ -154,33 +155,31 @@ const showPassword = ref(false)
 const submitting = ref(false)
 const errorMessage = ref('')
 
-function handleSubmit() {
+async function handleSubmit() {
   errorMessage.value = ''
   submitting.value = true
 
-  setTimeout(() => {
-    const stored = localStorage.getItem('tawi_user')
+  try {
+    const response = await authService.login({
+      email: form.email,
+      password: form.password
+    })
 
-    if (!stored) {
-      errorMessage.value = 'No account found. Please sign up first.'
-      submitting.value = false
-      return
+    // Store the authentication token
+    localStorage.setItem('auth_token', response.data.token)
+    
+    // Optionally store user data
+    if (response.data.user) {
+      localStorage.setItem('user', JSON.stringify(response.data.user))
     }
 
-    const savedUser = JSON.parse(stored)
-
-    if (
-      savedUser.email.toLowerCase() === form.email.toLowerCase() &&
-      savedUser.password === form.password
-    ) {
-      localStorage.setItem('tawi_session', 'active')
-      submitting.value = false
-      router.push('/')
-    } else {
-      errorMessage.value = 'Incorrect email or password.'
-      submitting.value = false
-    }
-  }, 700)
+    // Redirect to home or dashboard
+    router.push('/')
+  } catch (error) {
+    submitting.value = false
+    errorMessage.value = error.response?.data?.message || 'Login failed. Please try again.'
+    console.error('Login error:', error)
+  }
 }
 </script>
 

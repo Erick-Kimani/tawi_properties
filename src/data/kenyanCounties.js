@@ -1,0 +1,58 @@
+/**
+ * List of all 47 counties in Kenya
+ * Used for location selection dropdowns across the application
+ */
+
+export const kenyanCounties = [
+  'Baringo',
+  'Bomet',
+  'Bungoma',
+  'Baricho',
+  'Elgeyo-Marakwet',
+  'Embu',
+  'Garissa',
+  'Homa Bay',
+  'Isiolo',
+  'Kajiado',
+  'Kakamega',
+  'Kamba',
+  'Kapenguria',
+  'Kericho',
+  'Kiambu',
+  'Kilifi',
+  'Kirinyaga',
+  'Kisii',
+  'Kisumu',
+  'Kitui',
+  'Kwale',
+  'Laikipia',
+  'Lamu',
+  'Machakos',
+  'Makueni',
+  'Mandera',
+  'Marsabit',
+  'Meru',
+  'Migori',
+  'Mombasa',
+  'Murang\'a',
+  'Nairobi',
+  'Nakuru',
+  'Nandi',
+  'Narok',
+  'Nyamira',
+  'Nyandarua',
+  'Nyeri',
+  'Samburu',
+  'Siaya',
+  'Taita Taveta',
+  'Tana River',
+  'Thurston',
+  'Trans Nzoia',
+  'Turkana',
+  'Uasin Gishu',
+  'Vihiga',
+  'Wajir',
+  'West Pokot'
+]
+
+export default kenyanCounties

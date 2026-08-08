@@ -5,18 +5,22 @@
     <section class="search-strip">
       <div class="search-strip__inner">
         <div class="field">
-          <label>Location</label>
-          <input type="text" placeholder="Choose a location..." />
+          <LocationDropdown 
+            v-model="searchFilters.location"
+            label="Location"
+            placeholder="Choose a county..."
+            input-id="homepage-location"
+          />
         </div>
         <div class="field">
           <label>Price range</label>
-          <input type="text" placeholder="KES ....." />
+          <input v-model="searchFilters.priceRange" type="text" placeholder="KES ....." />
         </div>
         <div class="field">
           <label>Type</label>
-          <input type="text" placeholder="Apartment, Rental, land..." />
+          <input v-model="searchFilters.type" type="text" placeholder="Apartment, Rental, land..." />
         </div>
-        <button class="search-strip__submit">Search</button>
+        <button class="search-strip__submit" @click="handleSearch">Search</button>
       </div>
     </section>
 
@@ -25,8 +29,30 @@
 </template>
 
 <script setup>
+import { reactive } from 'vue'
+import { useRouter } from 'vue-router'
 import PropertyHero from '../components/PropertyHero.vue'
 import PropertyCategories from './Propertycategories.vue'
+import LocationDropdown from '../components/LocationDropdown.vue'
+
+const router = useRouter()
+
+const searchFilters = reactive({
+  location: '',
+  priceRange: '',
+  type: ''
+})
+
+function handleSearch() {
+  // Pass search filters to category listing or use for API call
+  const query = new URLSearchParams({
+    location: searchFilters.location,
+    priceRange: searchFilters.priceRange,
+    type: searchFilters.type
+  })
+  
+  router.push(`/buy?${query.toString()}`)
+}
 </script>
 
 <style scoped>

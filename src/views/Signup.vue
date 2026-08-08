@@ -71,6 +71,8 @@
           <p v-if="mismatch" class="field__error">Passwords don't match.</p>
         </div>
 
+        <p v-if="errorMessage" class="field__error">{{ errorMessage }}</p>
+
         <button type="submit" class="auth__submit" :disabled="submitting">
           {{ submitting ? 'Creating account…' : 'Create account' }}
         </button>
@@ -87,6 +89,7 @@
 <script setup>
 import { reactive, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import authService from '@/services/authService'
 
 const router = useRouter()
 
@@ -100,21 +103,41 @@ const form = reactive({
 const showPassword = ref(false)
 const showConfirm = ref(false)
 const submitting = ref(false)
+const errorMessage = ref('')
 
 const mismatch = computed(() =>
   form.confirmPassword.length > 0 && form.password !== form.confirmPassword
 )
 
-function handleSubmit() {
+async function handleSubmit() {
   if (form.password !== form.confirmPassword) return
 
+  errorMessage.value = ''
   submitting.value = true
 
-  // Placeholder — replace with a real API call once your backend/auth is ready.
-  setTimeout(() => {
-    submitting.value = false
+  try {
+    const response = await authService.register({
+      name: form.fullName,
+      email: form.email,
+      password: form.password,
+      password_confirmation: form.confirmPassword
+    })
+
+    // Store the authentication token
+    localStorage.setItem('auth_token', response.data.token)
+    
+    // Optionally store user data
+    if (response.data.user) {
+      localStorage.setItem('user', JSON.stringify(response.data.user))
+    }
+
+    // Redirect to home
     router.push('/')
-  }, 900)
+  } catch (error) {
+    submitting.value = false
+    errorMessage.value = error.response?.data?.message || 'Registration failed. Please try again.'
+    console.error('Registration error:', error)
+  }
 }
 </script>
 

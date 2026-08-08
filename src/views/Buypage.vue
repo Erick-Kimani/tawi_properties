@@ -19,7 +19,12 @@
             <circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.4"/>
             <path d="M11.5 11.5L15 15" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
           </svg>
-          <input type="text" v-model="query" placeholder="Search by location…" />
+          <LocationDropdown 
+            v-model="query"
+            :label="false"
+            placeholder="Search by county…"
+            input-id="buypage-location"
+          />
         </div>
 
         <div class="buy-toolbar__chips">
@@ -56,6 +61,11 @@
       </div>
 
       <div class="buy-empty" v-else>
+        <img
+          class="empty-illustration"
+          src="/images/Processing-bro.svg"
+          alt="No properties available"
+        />
         <p class="buy-empty__title">No matching properties yet</p>
         <p class="buy-empty__sub">
           Try a different search or category, or check back soon — new listings are
@@ -70,6 +80,7 @@
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { categories } from '../stores/Categories.js'
+import LocationDropdown from '../components/LocationDropdown.vue'
 
 const STORAGE_KEY = 'tawi_admin_feature_requests'
 const fallbackImage = '/images/Picture2.jpg'
@@ -379,6 +390,13 @@ const listings = computed(() => {
   font-weight: 500;
   padding: 11px 22px;
   transition: background 0.2s ease;
+}
+
+.empty-illustration {
+  display: block;
+  max-width: 320px;
+  width: 100%;
+  margin: 0 auto 32px;
 }
 
 .buy-empty__cta:hover { background: var(--brass-bright); }

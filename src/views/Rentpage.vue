@@ -19,7 +19,12 @@
             <circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.4"/>
             <path d="M11.5 11.5L15 15" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
           </svg>
-          <input type="text" v-model="query" placeholder="Search by location…" />
+          <LocationDropdown 
+            v-model="query"
+            :label="false"
+            placeholder="Search by county…"
+            input-id="rentpage-location"
+          />
         </div>
         <span class="rent-toolbar__count">
           {{ listings.length }} {{ listings.length === 1 ? 'rental' : 'rentals' }} available
@@ -58,6 +63,11 @@
       </div>
 
       <div class="rent-empty" v-else>
+        <img
+          class="empty-illustration"
+          src="/images/Processing-bro.svg"
+          alt="No rentals available"
+        />
         <p class="rent-empty__title">No matching rentals yet</p>
         <p class="rent-empty__sub">
           Try a different search, or check back soon — new rentals are reviewed and
@@ -72,6 +82,7 @@
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { getCategoryBySlug } from '../stores/Categories.js'
+import LocationDropdown from '../components/LocationDropdown.vue'
 
 const STORAGE_KEY = 'tawi_admin_feature_requests'
 const fallbackImage = '/images/Picture6.jpg'
@@ -339,6 +350,13 @@ const listings = computed(() => {
   font-size: 20px;
   color: var(--bone);
   margin: 0 0 10px;
+}
+
+.empty-illustration {
+  display: block;
+  max-width: 320px;
+  width: 100%;
+  margin: 0 auto 32px;
 }
 
 .rent-empty__sub {

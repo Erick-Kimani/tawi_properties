@@ -34,6 +34,11 @@
       </div>
 
       <div class="cat-empty" v-else>
+        <img
+          class="empty-illustration"
+          src="/images/Processing-bro.svg"
+          :alt="`No ${category.title.toLowerCase()} listings available`"
+        />
         <p class="cat-empty__title">No {{ category.title.toLowerCase() }} listings yet</p>
         <p class="cat-empty__sub">New properties are reviewed and featured regularly — check back soon, or be the first to list one.</p>
       </div>
@@ -303,6 +308,13 @@ const listings = computed(() => {
 }
 
 .cat-empty__cta:hover { background: var(--brass-bright); }
+
+.empty-illustration {
+  display: block;
+  max-width: 320px;
+  width: 100%;
+  margin: 0 auto 32px;
+}
 
 @media (max-width: 720px) {
   .cat-hero__inner { padding-bottom: 32px; }

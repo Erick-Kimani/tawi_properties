@@ -766,6 +766,12 @@ onBeforeUnmount(() => {
   background: var(--panel, #1b1e25);
 }
 
+/* Custom lilac cursor when hovering the map canvas */
+.property-map__canvas .maplibregl-canvas,
+.property-map--full .property-map__canvas .maplibregl-canvas {
+  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32'><circle cx='16' cy='16' r='7' fill='%23C8A2FG' /></svg>") 16 16, crosshair;
+}
+
 .property-map--full .property-map__canvas {
   height: 100%;
 }
