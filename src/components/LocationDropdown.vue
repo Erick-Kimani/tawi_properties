@@ -33,7 +33,12 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { kenyanCounties } from '@/data/kenyanCounties'
+import { useCounties } from '@/stores/counties'
+
+// `activeCounties` already excludes any county an admin has pulled down
+// from the Admin dashboard, so this dropdown (and any other component that
+// uses it) always reflects the current admin-approved list automatically.
+const { activeCounties } = useCounties()
 
 const props = defineProps({
   label: {
@@ -61,9 +66,9 @@ const isOpen = ref(false)
 
 const filteredCounties = computed(() => {
   if (!searchQuery.value) {
-    return kenyanCounties
+    return activeCounties.value
   }
-  return kenyanCounties.filter(county =>
+  return activeCounties.value.filter(county =>
     county.toLowerCase().includes(searchQuery.value.toLowerCase())
   )
 })

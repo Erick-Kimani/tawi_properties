@@ -116,6 +116,96 @@
     <div class="admin__empty card-surface" v-else>
       <p>No submissions match this filter yet.</p>
     </div>
+
+    <section class="admin__counties" ref="countiesRef">
+      <div class="admin__counties-head">
+        <div>
+          <h2 class="admin__counties-title">Manage counties</h2>
+          <p class="admin__counties-sub">
+            Pull a county down to hide it from the location dropdown on the Home, Categories,
+            Buy and Rent pages. This does not delete it — restore it any time.
+          </p>
+        </div>
+        <div class="admin__stats admin__counties-stats">
+          <div class="stat">
+            <span class="stat__value">{{ activeCounties.length }}</span>
+            <span class="stat__label">Active</span>
+          </div>
+          <div class="stat">
+            <span class="stat__value">{{ hiddenCounties.length }}</span>
+            <span class="stat__label">Pulled down</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin__toolbar">
+        <div class="admin__search">
+          <input
+            v-model="countyQuery"
+            type="search"
+            placeholder="Search counties..."
+            aria-label="Search counties"
+          />
+        </div>
+
+        <div class="admin__filters">
+          <button
+            v-for="f in countyFilters"
+            :key="f"
+            class="filter-pill"
+            :class="{ 'filter-pill--active': activeCountyFilter === f }"
+            @click="activeCountyFilter = f"
+          >
+            {{ f }}
+          </button>
+        </div>
+      </div>
+
+      <div class="admin__table card-surface" v-if="filteredCounties.length">
+        <table>
+          <thead>
+            <tr>
+              <th>County</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="county in filteredCounties" :key="county">
+              <td>{{ county }}</td>
+              <td>
+                <span
+                  class="status-pill"
+                  :class="isHidden(county) ? 'status-pill--pending' : 'status-pill--featured'"
+                >
+                  {{ isHidden(county) ? 'Pulled down' : 'Active' }}
+                </span>
+              </td>
+              <td class="admin__actions">
+                <button
+                  v-if="!isHidden(county)"
+                  class="action action--delete"
+                  @click="hideCounty(county)"
+                >
+                  Pull down
+                </button>
+                <button
+                  v-else
+                  class="action action--feature"
+                  @click="restoreCounty(county)"
+                >
+                  Restore
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="admin__empty card-surface" v-else>
+        <p>No counties match this search.</p>
+      </div>
+    </section>
     </div>
   </div>
 </template>
@@ -123,6 +213,7 @@
 <script setup>
 import { computed, ref, onMounted, nextTick, watch } from 'vue'
 import { animate } from 'animejs'
+import { useCounties } from '@/stores/counties'
 
 const STORAGE_KEY = 'tawi_admin_feature_requests'
 
@@ -242,6 +333,33 @@ const filteredRows = computed(() => {
 
 const featuredCount = computed(() => rows.value.filter((r) => r.status === 'featured').length)
 const pendingCount = computed(() => rows.value.filter((r) => r.status === 'pending').length)
+
+// --- Manage counties -------------------------------------------------
+// Pulling a county down here hides it from the LocationDropdown used on
+// the Home, Categories, Buy and Rent pages (see src/stores/counties.js).
+// It stays in the master list and can be restored at any time.
+const { allCounties, activeCounties, hiddenCounties, isHidden, hideCounty, restoreCounty } =
+  useCounties()
+
+const countiesRef = ref(null)
+const countyQuery = ref('')
+const countyFilters = ['All', 'Active', 'Pulled down']
+const activeCountyFilter = ref('All')
+
+const filteredCounties = computed(() => {
+  let result = allCounties
+
+  if (activeCountyFilter.value === 'Active') {
+    result = activeCounties.value
+  } else if (activeCountyFilter.value === 'Pulled down') {
+    result = hiddenCounties.value
+  }
+
+  const query = countyQuery.value.trim().toLowerCase()
+  if (!query) return result
+
+  return result.filter((county) => county.toLowerCase().includes(query))
+})
 
 onMounted(() => {
   nextTick(() => {
@@ -606,6 +724,41 @@ tbody tr:hover { background: rgba(237, 231, 218, 0.03); }
 .status-pill--pending {
   color: var(--brass-bright);
   background: rgba(209, 178, 127, 0.14);
+}
+
+.admin__counties {
+  margin-top: 56px;
+  padding-top: 32px;
+  border-top: 1px solid rgba(237, 231, 218, 0.12);
+}
+
+.admin__counties-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.admin__counties-title {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 22px;
+  color: var(--bone);
+  margin: 0 0 8px;
+}
+
+.admin__counties-sub {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--bone-dim);
+  margin: 0;
+  max-width: 480px;
+}
+
+.admin__counties-stats {
+  margin-bottom: 0;
 }
 
 @media (max-width: 720px) {
