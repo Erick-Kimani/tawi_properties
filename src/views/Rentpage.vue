@@ -80,27 +80,20 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { RouterLink } from 'vue-router'
 import { getCategoryBySlug } from '../stores/Categories.js'
 import LocationDropdown from '../components/LocationDropdown.vue'
 
-const STORAGE_KEY = 'tawi_admin_feature_requests'
 const fallbackImage = '/images/Picture6.jpg'
 const rentalCategory = getCategoryBySlug('rentals')
 
 const query = ref('')
 
-const allSubmissions = (() => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) : []
-  } catch (e) {
-    return []
-  }
-})()
+const allSubmissions = []
 
 const listings = computed(() => {
   const q = query.value.trim().toLowerCase()
+  if (!rentalCategory) return []
+
   return allSubmissions.filter((s) => {
     if (s.status !== 'featured') return false
     if (!rentalCategory.types.includes(s.type)) return false

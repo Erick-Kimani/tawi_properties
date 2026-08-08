@@ -56,23 +56,12 @@ import { computed } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { getCategoryBySlug } from '../stores/Categories.js'
 
-const STORAGE_KEY = 'tawi_admin_feature_requests'
-
 const route = useRoute()
 const category = computed(() => getCategoryBySlug(route.params.slug))
 
 const listings = computed(() => {
   if (!category.value) return []
-  let submissions = []
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    submissions = raw ? JSON.parse(raw) : []
-  } catch (e) {
-    submissions = []
-  }
-  return submissions.filter(
-    (s) => category.value.types.includes(s.type) && s.status === 'featured'
-  )
+  return []
 })
 </script>
 

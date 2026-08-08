@@ -550,11 +550,29 @@ onBeforeUnmount(() => {
   border: 2px solid var(--ink, #14171c);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
   cursor: pointer;
+  position: relative;
+}
+
+.property-map__pin::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -8px;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 8px solid var(--brass, #a9814b);
 }
 
 .property-map__pin--picker {
   background: var(--brass-bright, #c9a06a);
   cursor: grab;
+}
+
+.property-map__pin--picker::after {
+  border-top-color: var(--brass-bright, #c9a06a);
 }
 
 .property-map__popup {
@@ -766,10 +784,10 @@ onBeforeUnmount(() => {
   background: var(--panel, #1b1e25);
 }
 
-/* Custom lilac cursor when hovering the map canvas */
+/* Custom map cursor when hovering the map canvas */
 .property-map__canvas .maplibregl-canvas,
 .property-map--full .property-map__canvas .maplibregl-canvas {
-  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32'><circle cx='16' cy='16' r='7' fill='%23C8A2FG' /></svg>") 16 16, crosshair;
+  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32'><path d='M2 2 L22 16 L16 18 L24 30 L14 30 L10 22 L2 2 Z' fill='%23c9a06a' stroke='%2314171c' stroke-width='2'/></svg>") 0 0, crosshair;
 }
 
 .property-map--full .property-map__canvas {

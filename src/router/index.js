@@ -61,4 +61,20 @@ const router = createRouter({
   ],
 })
 
+// Global auth guard: require authentication for all routes
+const publicPages = ['/login', '/signup']
+
+router.beforeEach((to, from, next) => {
+  const token = localStorage.getItem('auth_token')
+  const isPublic = publicPages.includes(to.path)
+
+  if (!isPublic && !token) {
+    // Not authenticated and trying to access a protected page
+    return next({ name: 'login' })
+  }
+
+  // Proceed to route
+  return next()
+})
+
 export default router

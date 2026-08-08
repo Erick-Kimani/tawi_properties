@@ -50,7 +50,7 @@
         </div>
       </div>
 
-    <div class="admin__table card-surface" ref="tableRef" v-if="filteredRows.length">
+    <div class="admin__table card-surface" ref="tableRef" v-if="rows.length && filteredRows.length">
       <table>
         <thead>
           <tr>
@@ -104,7 +104,16 @@
       </table>
     </div>
 
-    <div class="admin__empty card-surface" ref="emptyRef" v-else>
+    <div class="admin__empty card-surface" ref="emptyRef" v-else-if="rows.length === 0">
+      <img
+        class="admin__empty-illustration"
+        src="/images/Discovery-amico.svg"
+        alt="No submissions yet"
+      />
+      <p>No submissions have been added yet.</p>
+    </div>
+
+    <div class="admin__empty card-surface" v-else>
       <p>No submissions match this filter yet.</p>
     </div>
     </div>
@@ -117,88 +126,13 @@ import { animate } from 'animejs'
 
 const STORAGE_KEY = 'tawi_admin_feature_requests'
 
-function makeId() {
-  return (crypto.randomUUID && crypto.randomUUID()) || `${Date.now()}-${Math.random().toString(16).slice(2)}`
-}
-
-function seedData() {
-  return [
-    {
-      id: makeId(),
-      type: 'House',
-      fullName: 'Grace Wanjiku',
-      email: 'grace.wanjiku@example.com',
-      phone: '+254 722 445 108',
-      priceRange: 'KES 18,500,000',
-      location: 'Karen, Nairobi',
-      latitude: -1.3193,
-      longitude: 36.7076,
-      photo: '/images/Picture4.jpg',
-      status: 'featured',
-      submittedAt: '2026-07-02'
-    },
-    {
-      id: makeId(),
-      type: 'Rental',
-      fullName: 'Brian Otieno',
-      email: 'brian.otieno@example.com',
-      phone: '+254 733 998 214',
-      priceRange: 'KES 95,000 / month',
-      location: 'Westlands, Nairobi',
-      latitude: -1.2657,
-      longitude: 36.8064,
-      photo: '/images/Picture6.jpg',
-      status: 'featured',
-      submittedAt: '2026-07-09'
-    },
-    {
-      id: makeId(),
-      type: 'Land',
-      fullName: 'Mary Achieng',
-      email: 'mary.achieng@example.com',
-      phone: '+254 700 112 233',
-      priceRange: 'KES 6,200,000',
-      location: 'Kiambu Road',
-      latitude: -1.1966,
-      longitude: 36.8390,
-      photo: '/images/Picture7.jpg',
-      status: 'pending',
-      submittedAt: '2026-07-11'
-    },
-    {
-      id: makeId(),
-      type: 'Commercial',
-      fullName: 'Samuel Kariuki',
-      email: 'samuel.kariuki@example.com',
-      phone: '+254 711 224 560',
-      priceRange: 'KES 350,000 / month',
-      location: 'Upper Hill, Nairobi',
-      latitude: -1.2996,
-      longitude: 36.8125,
-      photo: '/images/Picture5.jpg',
-      status: 'featured',
-      submittedAt: '2026-07-28'
-    }
-  ]
-}
-
 function loadRows() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw)
-      if (Array.isArray(parsed) && parsed.length) return parsed
-    }
+    localStorage.removeItem(STORAGE_KEY)
   } catch (e) {
-    // fall through to seed data
+    // storage unavailable
   }
-  const seeded = seedData()
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(seeded))
-  } catch (e) {
-    // storage unavailable — seed data still renders this session
-  }
-  return seeded
+  return []
 }
 
 const rows = ref(loadRows())
@@ -603,6 +537,12 @@ tbody tr:hover { background: rgba(237, 231, 218, 0.03); }
   text-align: center;
   color: var(--bone-dim);
   font-size: 14px;
+}
+
+.admin__empty-illustration {
+  display: block;
+  width: min(280px, 100%);
+  margin: 0 auto 18px;
 }
 
 /* Type badges */

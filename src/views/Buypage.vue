@@ -78,11 +78,9 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { RouterLink } from 'vue-router'
 import { categories } from '../stores/Categories.js'
 import LocationDropdown from '../components/LocationDropdown.vue'
 
-const STORAGE_KEY = 'tawi_admin_feature_requests'
 const fallbackImage = '/images/Picture2.jpg'
 
 // Every category that represents a "for sale" listing (everything but Rentals)
@@ -97,14 +95,7 @@ const chips = [
 const activeChip = ref('all')
 const query = ref('')
 
-const allSubmissions = (() => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) : []
-  } catch (e) {
-    return []
-  }
-})()
+const allSubmissions = []
 
 const listings = computed(() => {
   const chip = chips.find((c) => c.slug === activeChip.value) || chips[0]
