@@ -41,12 +41,20 @@
 
       <div ref="mapEl" class="property-map__canvas" :style="isFullPage ? {} : { height }"></div>
 
-      <p v-if="mode === 'picker' && isFullPage" class="property-map__hint property-map__hint--floating">
+      <div v-if="mode === 'picker' && isFullPage" class="property-map__hint property-map__hint--floating">
         <span v-if="coords">
           Pinned at {{ coords.lat.toFixed(5) }}, {{ coords.lng.toFixed(5) }}
         </span>
         <span v-else>Search above, or click anywhere on the map, to drop a pin.</span>
-      </p>
+        <button
+          v-if="coords && returnTo"
+          type="button"
+          class="property-map__confirm-btn"
+          @click="useThisLocation"
+        >
+          Use this location
+        </button>
+      </div>
     </div>
 
     <p v-if="mode === 'picker' && !isFullPage" class="property-map__hint">
@@ -88,7 +96,7 @@
  *    an explicit pixel value instead.
  */
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { Map as MapLibreMap, Marker, Popup, NavigationControl, LngLatBounds, setWorkerUrl } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
@@ -101,6 +109,7 @@ import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&ur
 setWorkerUrl(maplibreWorkerUrl)
 
 const route = useRoute()
+const router = useRouter()
 
 const props = defineProps({
   mode: {
@@ -186,6 +195,20 @@ const rootStyle = computed(() => {
   const offsetPx = typeof offset === 'number' ? `${offset}px` : offset
   return { '--nav-offset': offsetPx }
 })
+
+// Where "Use this location" sends the user back to, e.g. /property-map?returnTo=/list-property
+const returnTo = computed(() => (typeof route.query.returnTo === 'string' ? route.query.returnTo : null))
+
+function useThisLocation() {
+  if (!coords.value || !returnTo.value) return
+  router.push({
+    path: returnTo.value,
+    query: {
+      pinLat: coords.value.lat,
+      pinLng: coords.value.lng,
+    },
+  })
+}
 
 const searchQuery = ref('')
 const searchResults = ref([])
@@ -807,10 +830,32 @@ onBeforeUnmount(() => {
   left: 16px;
   bottom: 16px;
   z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   background: rgba(27, 30, 37, 0.9);
   backdrop-filter: blur(8px);
-  padding: 8px 14px;
+  padding: 8px 8px 8px 14px;
   border-radius: 999px;
   border: 1px solid rgba(169, 129, 75, 0.3);
+}
+
+.property-map__confirm-btn {
+  flex-shrink: 0;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #14171c;
+  background: var(--brass, #a9814b);
+  border: none;
+  border-radius: 999px;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.property-map__confirm-btn:hover {
+  background: var(--brass-bright, #c9a06a);
 }
 </style>

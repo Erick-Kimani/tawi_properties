@@ -41,6 +41,20 @@ const router = createRouter({
       path: '/property-map',
       name: 'property-map',
       component: PropertyMap,
+      // Full-page pin picker. `returnTo` (set by whoever links here) tells
+      // the map where to send the user back to once they confirm a pin.
+      // `lat`/`lng`, if present, seed the map with an existing pin (e.g. a
+      // form re-opening this to adjust a location it already picked).
+      props: (route) => {
+        const mapProps = { mode: 'picker' }
+        const lat = Number(route.query.lat)
+        const lng = Number(route.query.lng)
+        if (route.query.lat !== undefined && route.query.lng !== undefined && !Number.isNaN(lat) && !Number.isNaN(lng)) {
+          mapProps.center = [lng, lat]
+          mapProps.modelValue = { lat, lng }
+        }
+        return mapProps
+      },
     },
     {
       path: '/buy',

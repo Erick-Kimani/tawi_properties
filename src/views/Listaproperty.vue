@@ -112,9 +112,14 @@
         </div>
 
         <div class="field">
-          <label>
-            Pin exact location on map <span class="field__optional">(optional, but recommended)</span>
-          </label>
+          <div class="list-property__map-label-row">
+            <label>
+              Pin exact location on map <span class="field__optional">(optional, but recommended)</span>
+            </label>
+            <button type="button" class="list-property__expand-map-btn" @click="expandMap">
+              Expand map
+            </button>
+          </div>
           <div class="list-property__map-shell">
             <PropertyMap
               mode="picker"
@@ -176,9 +181,12 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { reactive, ref, onMounted } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import PropertyMap from '@/components/PropertyMap.vue'
+
+const route = useRoute()
+const router = useRouter()
 
 const STORAGE_KEY = 'tawi_admin_feature_requests'
 
@@ -203,6 +211,36 @@ const submitting = ref(false)
 const submitted = ref(false)
 const error = ref('')
 const lastSubmittedName = ref('')
+
+// Sends the user to the full-page map picker, telling it to send them back
+// here with the chosen coordinates. If a pin is already set, pass it along
+// so the full-page map opens centered on it instead of the default view.
+function expandMap() {
+  const query = { returnTo: '/list-property' }
+  if (pin.value) {
+    query.lat = pin.value.lat
+    query.lng = pin.value.lng
+  }
+  router.push({ path: '/property-map', query })
+}
+
+// Picks up pinLat/pinLng if we just came back from the full-page map picker,
+// then strips them from the URL so a refresh doesn't reapply them.
+onMounted(() => {
+  const { pinLat, pinLng } = route.query
+  if (pinLat === undefined || pinLng === undefined) return
+
+  const lat = Number(pinLat)
+  const lng = Number(pinLng)
+  if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+    pin.value = { lat, lng }
+  }
+
+  const cleanQuery = { ...route.query }
+  delete cleanQuery.pinLat
+  delete cleanQuery.pinLng
+  router.replace({ path: route.path, query: cleanQuery })
+})
 
 function makeId() {
   return (crypto.randomUUID && crypto.randomUUID()) || `${Date.now()}-${Math.random().toString(16).slice(2)}`
@@ -262,6 +300,33 @@ function resetForm() {
 </script>
 
 <style scoped>
+.list-property__map-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.list-property__expand-map-btn {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--brass-bright);
+  background: transparent;
+  border: 1px solid var(--brass);
+  border-radius: 999px;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.list-property__expand-map-btn:hover {
+  background: var(--brass);
+  color: #14171c;
+}
+
 .list-property__map-shell {
   margin-top: 10px;
   padding: 8px;
