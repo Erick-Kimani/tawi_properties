@@ -143,8 +143,10 @@
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import authService from '@/services/authService'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 const form = reactive({
   email: '',
@@ -165,13 +167,8 @@ async function handleSubmit() {
       password: form.password
     })
 
-    // Store the authentication token
-    localStorage.setItem('auth_token', response.data.token)
-    
-    // Optionally store user data
-    if (response.data.user) {
-      localStorage.setItem('user', JSON.stringify(response.data.user))
-    }
+    // Store the authentication token and update the reactive auth state
+    authStore.setSession(response.data.token, response.data.user)
 
     // Redirect to home or dashboard
     router.push('/')

@@ -29,7 +29,15 @@
       </nav>
 
       <div class="nav__actions">
-        <RouterLink class="nav__ghost" to="/signup">Sign in</RouterLink>
+        <button
+          v-if="authStore.isAuthenticated"
+          type="button"
+          class="nav__ghost nav__ghost--button"
+          @click="handleLogout"
+        >
+          {{ loggingOut ? 'Logging out…' : 'Logout' }}
+        </button>
+        <RouterLink v-else class="nav__ghost" to="/signup">Sign in</RouterLink>
         <RouterLink class="nav__cta" to="/list-property">List a property</RouterLink>
       </div>
 
@@ -44,19 +52,47 @@
       <RouterLink to="/rent" @click="menuOpen = false">Rent</RouterLink>
       <RouterLink to="/property-map" @click="menuOpen = false">Map</RouterLink>
       <RouterLink class="nav__cta" to="/list-property" @click="menuOpen = false">List a property</RouterLink>
+      <button
+        v-if="authStore.isAuthenticated"
+        type="button"
+        class="nav__mobile-logout"
+        @click="handleLogout"
+      >
+        {{ loggingOut ? 'Logging out…' : 'Logout' }}
+      </button>
+      <RouterLink v-else to="/signup" @click="menuOpen = false">Sign in</RouterLink>
     </div>
   </header>
 </template>
 
 <script setup>
-import { RouterLink, useRoute } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { computed, ref } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
+const router = useRouter()
+const authStore = useAuthStore()
+
 const menuOpen = ref(false)
 const dropdownOpen = ref(false)
+const loggingOut = ref(false)
 
 const isMoreActive = computed(() => route.path.startsWith('/property-map'))
+
+async function handleLogout() {
+  if (loggingOut.value) return
+  loggingOut.value = true
+  menuOpen.value = false
+  dropdownOpen.value = false
+
+  // Clears the token/user from state + localStorage, so the logout
+  // button itself disappears from the nav the moment this resolves,
+  // then send the user to the login page.
+  await authStore.logout()
+  loggingOut.value = false
+  router.push('/login')
+}
 </script>
 
 <style scoped>
@@ -221,6 +257,24 @@ const isMoreActive = computed(() => route.path.startsWith('/property-map'))
   font-size: 14px;
 }
 
+.nav__ghost--button {
+  background: none;
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.2s ease;
+}
+
+.nav__ghost--button:hover {
+  color: var(--bone);
+}
+
+.nav__ghost--button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .nav__cta {
   border: 1px solid var(--brass);
   color: var(--brass-bright);
@@ -277,6 +331,22 @@ const isMoreActive = computed(() => route.path.startsWith('/property-map'))
     font-size: 15px;
   }
   .nav__mobile a.router-link-active {
+    color: var(--brass-bright);
+  }
+
+  .nav__mobile-logout {
+    align-self: flex-start;
+    background: none;
+    border: none;
+    font-family: inherit;
+    color: var(--bone-dim);
+    text-decoration: none;
+    font-size: 15px;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  .nav__mobile-logout:hover {
     color: var(--brass-bright);
   }
 }
