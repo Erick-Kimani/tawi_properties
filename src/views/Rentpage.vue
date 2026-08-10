@@ -26,6 +26,14 @@
             input-id="rentpage-location"
           />
         </div>
+        <div class="rent-toolbar__type">
+          <PropertyTypeDropdown
+            model-value="Rentals"
+            label="Type"
+            input-id="rentpage-type"
+            disabled
+          />
+        </div>
         <span class="rent-toolbar__count">
           {{ listings.length }} {{ listings.length === 1 ? 'rental' : 'rentals' }} available
         </span>
@@ -80,11 +88,10 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { getCategoryBySlug } from '../stores/Categories.js'
 import LocationDropdown from '../components/LocationDropdown.vue'
+import PropertyTypeDropdown from '../components/PropertyTypeDropdown.vue'
 
 const fallbackImage = '/images/Picture6.jpg'
-const rentalCategory = getCategoryBySlug('rentals')
 
 const query = ref('')
 
@@ -92,11 +99,10 @@ const allSubmissions = []
 
 const listings = computed(() => {
   const q = query.value.trim().toLowerCase()
-  if (!rentalCategory) return []
 
   return allSubmissions.filter((s) => {
     if (s.status !== 'featured') return false
-    if (!rentalCategory.types.includes(s.type)) return false
+    if (s.type !== 'Rentals') return false
     if (q && !s.location.toLowerCase().includes(q)) return false
     return true
   })
@@ -199,6 +205,11 @@ const listings = computed(() => {
 
 .rent-toolbar__search input::placeholder { color: rgba(237, 231, 218, 0.35); }
 .rent-toolbar__search input:focus { outline: none; }
+
+.rent-toolbar__type {
+  flex: 0 1 200px;
+  min-width: 150px;
+}
 
 .rent-toolbar__count {
   font-family: var(--font-mono);

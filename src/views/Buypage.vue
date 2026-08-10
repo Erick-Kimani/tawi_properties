@@ -27,16 +27,15 @@
           />
         </div>
 
-        <div class="buy-toolbar__chips">
-          <button
-            v-for="chip in chips"
-            :key="chip.slug"
-            class="chip"
-            :class="{ 'chip--active': activeChip === chip.slug }"
-            @click="activeChip = chip.slug"
-          >
-            {{ chip.label }}
-          </button>
+        <div class="buy-toolbar__type">
+          <PropertyTypeDropdown
+            v-model="selectedType"
+            label="Type"
+            input-id="buypage-type"
+            include-all-option
+            all-option-label="All"
+            :exclude-types="['Rentals']"
+          />
         </div>
       </div>
     </div>
@@ -78,32 +77,25 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { categories } from '../stores/Categories.js'
 import LocationDropdown from '../components/LocationDropdown.vue'
+import PropertyTypeDropdown from '../components/PropertyTypeDropdown.vue'
 
 const fallbackImage = '/images/Picture2.jpg'
 
-// Every category that represents a "for sale" listing (everything but Rentals)
-const saleCategories = categories.filter((c) => c.slug !== 'rentals')
-const saleTypes = saleCategories.flatMap((c) => c.types)
-
-const chips = [
-  { slug: 'all', label: 'All', types: saleTypes },
-  ...saleCategories.map((c) => ({ slug: c.slug, label: c.title, types: c.types }))
-]
-
-const activeChip = ref('all')
 const query = ref('')
+// '' = All types. The Buy page only ever shows "for sale" listings, so
+// Rentals is excluded from the dropdown entirely (see :exclude-types above).
+const selectedType = ref('')
 
 const allSubmissions = []
 
 const listings = computed(() => {
-  const chip = chips.find((c) => c.slug === activeChip.value) || chips[0]
   const q = query.value.trim().toLowerCase()
 
   return allSubmissions.filter((s) => {
     if (s.status !== 'featured') return false
-    if (!chip.types.includes(s.type)) return false
+    if (s.type === 'Rentals') return false
+    if (selectedType.value && s.type !== selectedType.value) return false
     if (q && !s.location.toLowerCase().includes(q)) return false
     return true
   })
@@ -209,30 +201,9 @@ const listings = computed(() => {
 .buy-toolbar__search input::placeholder { color: rgba(237, 231, 218, 0.35); }
 .buy-toolbar__search input:focus { outline: none; }
 
-.buy-toolbar__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.chip {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.03em;
-  color: var(--bone-dim);
-  background: none;
-  border: 1px solid rgba(237, 231, 218, 0.18);
-  padding: 8px 15px;
-  cursor: pointer;
-  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
-}
-
-.chip:hover { color: var(--bone); }
-
-.chip--active {
-  color: var(--ink);
-  background: var(--brass-bright);
-  border-color: var(--brass-bright);
+.buy-toolbar__type {
+  flex: 0 1 220px;
+  min-width: 160px;
 }
 
 .buy-body {

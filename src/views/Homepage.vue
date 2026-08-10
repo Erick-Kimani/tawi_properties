@@ -17,8 +17,13 @@
           <input v-model="searchFilters.priceRange" type="text" placeholder="KES ....." />
         </div>
         <div class="field">
-          <label>Type</label>
-          <input v-model="searchFilters.type" type="text" placeholder="Apartment, Rental, land..." />
+          <PropertyTypeDropdown
+            v-model="searchFilters.type"
+            label="Type"
+            input-id="homepage-type"
+            include-all-option
+            all-option-label="All types"
+          />
         </div>
         <button class="search-strip__submit" @click="handleSearch">Search</button>
       </div>
@@ -34,6 +39,7 @@ import { useRouter } from 'vue-router'
 import PropertyHero from '../components/PropertyHero.vue'
 import PropertyCategories from './Propertycategories.vue'
 import LocationDropdown from '../components/LocationDropdown.vue'
+import PropertyTypeDropdown from '../components/PropertyTypeDropdown.vue'
 
 const router = useRouter()
 

@@ -46,9 +46,10 @@
         <form v-if="!submitted" class="list-property__form" @submit.prevent="handleSubmit">
         <div class="field">
           <label for="type">Property type</label>
-          <select id="type" v-model="form.type" required>
+          <select id="type" v-model="form.type" required :disabled="propertyTypesLoading">
             <option v-for="t in propertyTypes" :key="t" :value="t">{{ t }}</option>
           </select>
+          <p v-if="propertyTypesError" class="field__error">{{ propertyTypesError }}</p>
         </div>
 
         <div class="field">
@@ -181,20 +182,25 @@
 </template>
 
 <script setup>
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, ref, watch, onMounted } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import PropertyMap from '@/components/PropertyMap.vue'
+import { usePropertyTypes } from '@/stores/propertyTypes'
 
 const route = useRoute()
 const router = useRouter()
 
 const STORAGE_KEY = 'tawi_admin_feature_requests'
 
-const propertyTypes = ['Flat', 'Rental', 'Land', 'House', 'Commercial']
+const {
+  propertyTypes,
+  loading: propertyTypesLoading,
+  error: propertyTypesError
+} = usePropertyTypes()
 
 function blankForm() {
   return {
-    type: 'Flat',
+    type: propertyTypes.value[0] || '',
     fullName: '',
     email: '',
     phone: '',
@@ -211,6 +217,14 @@ const submitting = ref(false)
 const submitted = ref(false)
 const error = ref('')
 const lastSubmittedName = ref('')
+
+// Keep the selected type valid once the real API list arrives (it may
+// differ from the fallback options used while loading).
+watch(propertyTypes, (types) => {
+  if (types.length && !types.includes(form.type)) {
+    form.type = types[0]
+  }
+})
 
 // Sends the user to the full-page map picker, telling it to send them back
 // here with the chosen coordinates. If a pin is already set, pass it along
