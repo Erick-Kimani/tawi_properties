@@ -54,7 +54,7 @@
         <RouterLink to="/property-map">Map</RouterLink>
       </nav>
 
-      <nav class="footer__col">
+        <nav class="footer__col">
         <p class="footer__heading">Account</p>
         <RouterLink v-if="!authStore.isAuthenticated" to="/login">Login</RouterLink>
         <RouterLink v-if="!authStore.isAuthenticated" to="/signup">Sign up</RouterLink>
@@ -66,8 +66,11 @@
         >
           {{ loggingOut ? 'Logging out…' : 'Logout' }}
         </button>
-        <RouterLink to="/admin">Admin</RouterLink>
+        
+        <!-- Add the v-if condition right here -->
+        <RouterLink v-if="authStore.user?.role?.slug === 'administrator'" to="/admin">Admin</RouterLink>
       </nav>
+
 
       <nav class="footer__col">
         <p class="footer__heading">List with us</p>

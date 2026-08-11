@@ -101,7 +101,9 @@
             />
           </div>
           <div class="field">
-            <label for="location">Location</label>
+            <label for="location">
+              Location <span class="field__optional">(auto-fills from the map pin below)</span>
+            </label>
             <input
               id="location"
               v-model="form.location"
@@ -126,6 +128,7 @@
               mode="picker"
               v-model="pin"
               height="360px"
+              @update:address="onPinAddressResolved"
             />
           </div>
         </div>
@@ -238,10 +241,18 @@ function expandMap() {
   router.push({ path: '/property-map', query })
 }
 
-// Picks up pinLat/pinLng if we just came back from the full-page map picker,
-// then strips them from the URL so a refresh doesn't reapply them.
+// Called whenever the map's pin moves (click, drag, or search-select) —
+// keeps the Location field matching the actual pin instead of letting
+// separately-typed text drift from where it's really dropped.
+function onPinAddressResolved(address) {
+  if (address) form.location = address
+}
+
+// Picks up pinLat/pinLng (and, if resolved, address) if we just came back
+// from the full-page map picker, then strips them from the URL so a
+// refresh doesn't reapply them.
 onMounted(() => {
-  const { pinLat, pinLng } = route.query
+  const { pinLat, pinLng, address } = route.query
   if (pinLat === undefined || pinLng === undefined) return
 
   const lat = Number(pinLat)
@@ -249,10 +260,14 @@ onMounted(() => {
   if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
     pin.value = { lat, lng }
   }
+  if (typeof address === 'string' && address) {
+    form.location = address
+  }
 
   const cleanQuery = { ...route.query }
   delete cleanQuery.pinLat
   delete cleanQuery.pinLng
+  delete cleanQuery.address
   router.replace({ path: route.path, query: cleanQuery })
 })
 

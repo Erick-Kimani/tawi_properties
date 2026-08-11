@@ -76,9 +76,10 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import LocationDropdown from '../components/LocationDropdown.vue'
 import PropertyTypeDropdown from '../components/PropertyTypeDropdown.vue'
+import propertySubmissionService from '@/services/propertySubmissionService'
 
 const fallbackImage = '/images/Picture2.jpg'
 
@@ -87,13 +88,32 @@ const query = ref('')
 // Rentals is excluded from the dropdown entirely (see :exclude-types above).
 const selectedType = ref('')
 
-const allSubmissions = []
+const allSubmissions = ref([])
+
+onMounted(async () => {
+  try {
+    const { data } = await propertySubmissionService.getFeatured()
+    // API already only returns status === 'featured'; map field names to
+    // what the template expects (fullName, priceRange, photo).
+    allSubmissions.value = data.map((s) => ({
+      id: s.id,
+      type: s.type,
+      fullName: s.full_name,
+      email: s.email,
+      priceRange: s.price_range,
+      location: s.location,
+      photo: s.photo_url
+    }))
+  } catch (e) {
+    // Leave allSubmissions empty — the existing "no listings" empty
+    // state in the template already covers this case.
+  }
+})
 
 const listings = computed(() => {
   const q = query.value.trim().toLowerCase()
 
-  return allSubmissions.filter((s) => {
-    if (s.status !== 'featured') return false
+  return allSubmissions.value.filter((s) => {
     if (s.type === 'Rentals') return false
     if (selectedType.value && s.type !== selectedType.value) return false
     if (q && !s.location.toLowerCase().includes(q)) return false

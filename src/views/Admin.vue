@@ -50,6 +50,9 @@
         </div>
       </div>
 
+    <p v-if="loading" class="admin__status-text">Loading submissions…</p>
+    <p v-if="loadError" class="admin__status-text admin__status-text--error">{{ loadError }}</p>
+
     <div class="admin__table card-surface" ref="tableRef" v-if="rows.length && filteredRows.length">
       <table>
         <thead>
@@ -86,25 +89,25 @@
               <button
                 v-if="row.status !== 'featured'"
                 class="action action--feature"
-                @click="setStatus(row.id, 'featured')"
+                @click="handleFeature(row.id)"
               >
                 Feature
               </button>
               <button
                 v-else
                 class="action action--unfeature"
-                @click="setStatus(row.id, 'pending')"
+                @click="handleUnfeature(row.id)"
               >
                 Unfeature
               </button>
-              <button class="action action--delete" @click="removeRow(row.id)">Delete</button>
+              <button class="action action--delete" @click="handleReject(row.id)">Delete</button>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <div class="admin__empty card-surface" ref="emptyRef" v-else-if="rows.length === 0">
+    <div class="admin__empty card-surface" ref="emptyRef" v-else-if="rows.length === 0 && !loading">
       <img
         class="admin__empty-illustration"
         src="/images/Discovery-amico.svg"
@@ -113,7 +116,7 @@
       <p>No submissions have been added yet.</p>
     </div>
 
-    <div class="admin__empty card-surface" v-else>
+    <div class="admin__empty card-surface" v-else-if="!loading">
       <p>No submissions match this filter yet.</p>
     </div>
 
@@ -214,19 +217,11 @@
 import { computed, ref, onMounted, nextTick, watch } from 'vue'
 import { animate } from 'animejs'
 import { useCounties } from '@/stores/counties'
+import propertySubmissionService from '@/services/propertySubmissionService'
 
-const STORAGE_KEY = 'tawi_admin_feature_requests'
-
-function loadRows() {
-  try {
-    localStorage.removeItem(STORAGE_KEY)
-  } catch (e) {
-    // storage unavailable
-  }
-  return []
-}
-
-const rows = ref(loadRows())
+const rows = ref([])
+const loading = ref(true)
+const loadError = ref('')
 const heroRef = ref(null)
 const heroInnerRef = ref(null)
 const statsRef = ref(null)
@@ -234,11 +229,46 @@ const toolbarRef = ref(null)
 const tableRef = ref(null)
 const emptyRef = ref(null)
 
-function persist() {
+// Maps the API's snake_case submission shape onto what the template expects.
+function mapSubmission(s) {
+  return {
+    id: s.id,
+    type: s.type,
+    fullName: s.full_name,
+    email: s.email,
+    phone: s.phone,
+    priceRange: s.price_range,
+    location: s.location,
+    status: s.status,
+    photo: s.photo_url,
+    submittedAt: s.created_at ? s.created_at.slice(0, 10) : ''
+  }
+}
+
+async function loadRows() {
+  loading.value = true
+  loadError.value = ''
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(rows.value))
+    const { data } = await propertySubmissionService.getAll()
+    // Laravel's paginate() wraps results in a `data` key.
+    rows.value = (data.data || data).map(mapSubmission)
   } catch (e) {
-    // storage unavailable
+    loadError.value = 'Could not load submissions. Please refresh and try again.'
+  } finally {
+    loading.value = false
+    // The watch(filteredRows, ...) below handles animating rows in once
+    // they arrive. We only need to handle the empty-state fade here.
+    nextTick(() => {
+      if (!filteredRows.value.length && emptyRef.value) {
+        animate({
+          targets: emptyRef.value,
+          opacity: [0, 1],
+          translateY: [10, 0],
+          duration: 320,
+          easing: 'easeOutQuad'
+        })
+      }
+    })
   }
 }
 
@@ -270,34 +300,61 @@ function animateStatusPulse(id) {
   })
 }
 
-function setStatus(id, status) {
+// "Feature" — publishes the submission to Buy/Rent.
+async function handleFeature(id) {
   const row = rows.value.find((r) => r.id === id)
-  if (row) {
-    row.status = status
-    persist()
+  if (!row) return
+  loadError.value = ''
+  try {
+    await propertySubmissionService.feature(id)
+    row.status = 'featured'
     animateStatusPulse(id)
+  } catch (e) {
+    loadError.value = 'Could not feature this submission. Please try again.'
   }
 }
 
-function removeRow(id) {
-  rows.value = rows.value.filter((r) => r.id !== id)
-  persist()
-  nextTick(() => {
-    if (filteredRows.value.length) {
-      animateRows()
-    } else if (emptyRef.value) {
-      animate({
-        targets: emptyRef.value,
-        opacity: [0, 1],
-        translateY: [10, 0],
-        duration: 320,
-        easing: 'easeOutQuad'
-      })
-    }
-  })
+// "Unfeature" — pulls it back to pending for re-review.
+async function handleUnfeature(id) {
+  const row = rows.value.find((r) => r.id === id)
+  if (!row) return
+  loadError.value = ''
+  try {
+    await propertySubmissionService.unfeature(id)
+    row.status = 'pending'
+    animateStatusPulse(id)
+  } catch (e) {
+    loadError.value = 'Could not unfeature this submission. Please try again.'
+  }
 }
 
-const filters = ['All', 'Featured', 'Pending']
+// "Delete" — soft delete: marks it rejected, keeps the record for history.
+async function handleReject(id) {
+  const row = rows.value.find((r) => r.id === id)
+  if (!row) return
+  loadError.value = ''
+  try {
+    await propertySubmissionService.reject(id)
+    row.status = 'rejected'
+    nextTick(() => {
+      if (filteredRows.value.length) {
+        animateRows()
+      } else if (emptyRef.value) {
+        animate({
+          targets: emptyRef.value,
+          opacity: [0, 1],
+          translateY: [10, 0],
+          duration: 320,
+          easing: 'easeOutQuad'
+        })
+      }
+    })
+  } catch (e) {
+    loadError.value = 'Could not reject this submission. Please try again.'
+  }
+}
+
+const filters = ['All', 'Featured', 'Pending', 'Rejected']
 const activeFilter = ref('All')
 const searchQuery = ref('')
 
@@ -308,6 +365,8 @@ const filteredRows = computed(() => {
     result = result.filter((r) => r.status === 'featured')
   } else if (activeFilter.value === 'Pending') {
     result = result.filter((r) => r.status === 'pending')
+  } else if (activeFilter.value === 'Rejected') {
+    result = result.filter((r) => r.status === 'rejected')
   }
 
   const query = searchQuery.value.trim().toLowerCase()
@@ -362,6 +421,8 @@ const filteredCounties = computed(() => {
 })
 
 onMounted(() => {
+  loadRows()
+
   nextTick(() => {
     if (heroInnerRef.value) {
       animate({
@@ -391,18 +452,6 @@ onMounted(() => {
         opacity: [0, 1],
         translateY: [12, 0],
         duration: 500,
-        easing: 'easeOutQuad'
-      })
-    }
-
-    if (filteredRows.value.length) {
-      animateRows()
-    } else if (emptyRef.value) {
-      animate({
-        targets: emptyRef.value,
-        opacity: [0, 1],
-        translateY: [10, 0],
-        duration: 320,
         easing: 'easeOutQuad'
       })
     }
@@ -566,6 +615,16 @@ watch(filteredRows, () => {
   border-color: var(--brass-bright);
 }
 
+.admin__status-text {
+  font-size: 13.5px;
+  color: var(--bone-dim);
+  margin: 0 0 16px;
+}
+
+.admin__status-text--error {
+  color: #dd7f75;
+}
+
 .admin__table {
   overflow-x: auto;
   padding: 4px;
@@ -724,6 +783,11 @@ tbody tr:hover { background: rgba(237, 231, 218, 0.03); }
 .status-pill--pending {
   color: var(--brass-bright);
   background: rgba(209, 178, 127, 0.14);
+}
+
+.status-pill--rejected {
+  color: #d98b6a;
+  background: rgba(217, 139, 106, 0.14);
 }
 
 .admin__counties {

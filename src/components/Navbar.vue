@@ -6,27 +6,29 @@
         <span class="nav__mark-word">Tawi Properties</span>
       </RouterLink>
 
-      <nav class="nav__links">
-        <RouterLink to="/buy">Buy</RouterLink>
-        <RouterLink to="/rent">Rent</RouterLink>
-        <RouterLink to="/admin">Admin</RouterLink>
+     <nav class="nav__links">
+  <RouterLink to="/buy">Buy</RouterLink>
+  <RouterLink to="/rent">Rent</RouterLink>
+  
+  <!-- Add the v-if here -->
+  <RouterLink v-if="authStore.user?.role?.slug === 'administrator'" to="/admin">Admin</RouterLink>
 
-        <div class="nav__dropdown" @mouseleave="dropdownOpen = false">
-          <button
-            class="nav__dropdown-trigger"
-            :class="{ 'nav__dropdown-trigger--active': isMoreActive }"
-            type="button"
-            @click="dropdownOpen = !dropdownOpen"
-          >
-            More
-            <span class="nav__dropdown-chevron">▾</span>
-          </button>
+  <div class="nav__dropdown" @mouseleave="dropdownOpen = false">
+    <button
+      class="nav__dropdown-trigger"
+      :class="{ 'nav__dropdown-trigger--active': isMoreActive }"
+      type="button"
+      @click="dropdownOpen = !dropdownOpen"
+    >
+      More
+      <span class="nav__dropdown-chevron">▾</span>
+    </button>
 
-          <div v-if="dropdownOpen" class="nav__dropdown-menu">
-            <RouterLink to="/property-map" @click="dropdownOpen = false">Map</RouterLink>
-          </div>
-        </div>
-      </nav>
+    <div v-if="dropdownOpen" class="nav__dropdown-menu">
+      <RouterLink to="/property-map" @click="dropdownOpen = false">Map</RouterLink>
+    </div>
+  </div>
+</nav>
 
       <div class="nav__actions">
         <button

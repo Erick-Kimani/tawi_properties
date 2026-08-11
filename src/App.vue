@@ -1,7 +1,9 @@
 <script setup>
-import { RouterView } from 'vue-router'
+import { RouterView, useRoute } from 'vue-router'
 import Navbar from './components/Navbar.vue'
 import Footer from './components/Footer.vue'
+
+const route = useRoute()
 </script>
 
 <template>
@@ -10,7 +12,8 @@ import Footer from './components/Footer.vue'
     <main class="app__main">
       <RouterView />
     </main>
-    <Footer />
+    <!-- The footer will now hide automatically on the map view -->
+    <Footer v-if="route.name !== 'property-map'" />
   </div>
 </template>
 

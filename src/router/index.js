@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/stores/auth' // Added this import
 import HomeView from '../views/Homepage.vue'
 import SignUpView from '../views/Signup.vue'
 import Login from '../views/Login.vue'
@@ -31,6 +32,7 @@ const router = createRouter({
       path: '/admin',
       name: 'admin',
       component: Admin,
+      meta: { requiresAdmin: true }, // Added this meta tag
     },
     {
       path: '/list-property',
@@ -41,10 +43,6 @@ const router = createRouter({
       path: '/property-map',
       name: 'property-map',
       component: PropertyMap,
-      // Full-page pin picker. `returnTo` (set by whoever links here) tells
-      // the map where to send the user back to once they confirm a pin.
-      // `lat`/`lng`, if present, seed the map with an existing pin (e.g. a
-      // form re-opening this to adjust a location it already picked).
       props: (route) => {
         const mapProps = { mode: 'picker' }
         const lat = Number(route.query.lat)
@@ -75,19 +73,22 @@ const router = createRouter({
   ],
 })
 
-// Global auth guard: require authentication for all routes
 const publicPages = ['/login', '/signup']
 
 router.beforeEach((to, from, next) => {
+  const authStore = useAuthStore() // Access the store inside the guard
   const token = localStorage.getItem('auth_token')
   const isPublic = publicPages.includes(to.path)
 
   if (!isPublic && !token) {
-    // Not authenticated and trying to access a protected page
     return next({ name: 'login' })
   }
 
-  // Proceed to route
+  // Intercept normal users using the correct nested role slug object structure
+  if (to.meta.requiresAdmin && authStore.user?.role?.slug !== 'administrator') {
+    return next({ name: 'home' })
+  }
+
   return next()
 })
 

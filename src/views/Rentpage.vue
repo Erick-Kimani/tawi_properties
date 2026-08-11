@@ -85,30 +85,45 @@
     </section>
   </div>
 </template>
-
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import LocationDropdown from '../components/LocationDropdown.vue'
 import PropertyTypeDropdown from '../components/PropertyTypeDropdown.vue'
+import propertySubmissionService from '@/services/propertySubmissionService'
 
 const fallbackImage = '/images/Picture6.jpg'
 
 const query = ref('')
 
-const allSubmissions = []
+const allSubmissions = ref([])
+
+onMounted(async () => {
+  try {
+    const { data } = await propertySubmissionService.getFeatured('Rentals')
+    allSubmissions.value = data.map((s) => ({
+      id: s.id,
+      type: s.type,
+      fullName: s.full_name,
+      email: s.email,
+      priceRange: s.price_range,
+      location: s.location,
+      photo: s.photo_url
+    }))
+  } catch (e) {
+    // Leave allSubmissions empty — the existing "no matching rentals"
+    // empty state in the template already covers this case.
+  }
+})
 
 const listings = computed(() => {
   const q = query.value.trim().toLowerCase()
 
-  return allSubmissions.filter((s) => {
-    if (s.status !== 'featured') return false
-    if (s.type !== 'Rentals') return false
+  return allSubmissions.value.filter((s) => {
     if (q && !s.location.toLowerCase().includes(q)) return false
     return true
   })
 })
 </script>
-
 <style scoped>
 .rent-page {
   background: var(--ink);

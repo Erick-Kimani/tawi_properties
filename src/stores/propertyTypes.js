@@ -10,7 +10,7 @@ import propertyTypeService from '@/services/propertyTypeService'
 
 // Used only until the API call resolves, or if it fails outright, so every
 // dropdown still has sensible options instead of rendering empty.
-const FALLBACK_PROPERTY_TYPES = ['Land', 'Rentals', 'Commercial Buildings', 'Apartments']
+const FALLBACK_PROPERTY_TYPES = ['Land/Plot', 'Rent', 'Commercial Buildings', 'Apartments']
 
 const state = reactive({
   types: [...FALLBACK_PROPERTY_TYPES],

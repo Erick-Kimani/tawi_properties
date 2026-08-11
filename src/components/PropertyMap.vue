@@ -159,12 +159,19 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['update:modelValue', 'marker-click'])
+const emit = defineEmits(['update:modelValue', 'marker-click', 'update:address'])
 
 const mapEl = ref(null)
 const coords = ref(props.modelValue && !Array.isArray(props.modelValue) ? props.modelValue : null)
 const routePoints = ref(Array.isArray(props.modelValue) ? props.modelValue.slice() : [])
 const detectedNavOffset = ref(84) // sane fallback until measured
+
+// The human-readable address for the current picker pin — kept in sync
+// with `coords` any time it changes (click, drag, or search-select), and
+// re-emitted via 'update:address' so parents can mirror it into a form
+// field instead of trusting separately-typed text that could drift from
+// where the pin actually is.
+const resolvedAddress = ref('')
 
 let navResizeObserver = null
 
@@ -206,6 +213,7 @@ function useThisLocation() {
     query: {
       pinLat: coords.value.lat,
       pinLng: coords.value.lng,
+      ...(resolvedAddress.value ? { address: resolvedAddress.value } : {}),
     },
   })
 }
@@ -262,6 +270,15 @@ function closeResults() {
   showResults.value = false
 }
 
+// Shared by forward search results and reverse-geocode responses so both
+// paths produce address text in the same shape.
+function formatAddress(p) {
+  const parts = [p.street, p.district, p.city, p.state, p.country].filter(Boolean)
+  const mainText = p.name || parts[0] || ''
+  const secondaryText = parts.filter((part) => part !== mainText).slice(0, 3).join(', ')
+  return secondaryText ? `${mainText}, ${secondaryText}` : mainText
+}
+
 async function runSearch(query) {
   searching.value = true
   if (searchAbortController) searchAbortController.abort()
@@ -291,6 +308,7 @@ async function runSearch(query) {
         lng: feature.geometry.coordinates[0],
         mainText: p.name || parts[0] || query,
         secondaryText: parts.filter((part) => part !== p.name).slice(0, 3).join(', '),
+        address: formatAddress(p),
       }
     })
   } catch (err) {
@@ -304,6 +322,47 @@ async function runSearch(query) {
   }
 }
 
+let reverseAbortController = null
+
+// Coordinates → address. Used whenever the pin is placed by clicking the
+// map or dragging the marker — cases where we only have lat/lng, unlike
+// picking a search result (which already carries an address string).
+async function reverseGeocode(lat, lng) {
+  if (reverseAbortController) reverseAbortController.abort()
+  reverseAbortController = new AbortController()
+
+  try {
+    const params = new URLSearchParams({ lon: String(lng), lat: String(lat) })
+    const res = await fetch(`${SEARCH_URL}reverse?${params}`, {
+      signal: reverseAbortController.signal,
+    })
+    if (!res.ok) throw new Error('Reverse geocode failed')
+
+    const data = await res.json()
+    const feature = (data.features || [])[0]
+    return feature ? formatAddress(feature.properties || {}) : ''
+  } catch (err) {
+    if (err.name !== 'AbortError') {
+      console.error('Reverse geocode failed:', err)
+    }
+    return ''
+  }
+}
+
+// Single entry point for placing/moving the picker pin. `label`, when
+// given (a search result was picked), skips the reverse-geocode call
+// since we already know the address. Otherwise (map click or marker
+// drag) we look the address up from the coordinates.
+async function setCoords(lat, lng, label = null) {
+  coords.value = { lat, lng }
+  setPickerMarker([lng, lat])
+  emit('update:modelValue', coords.value)
+
+  const address = label !== null ? label : await reverseGeocode(lat, lng)
+  resolvedAddress.value = address
+  emit('update:address', address)
+}
+
 function selectResult(result) {
   searchQuery.value = result.mainText
   showResults.value = false
@@ -314,9 +373,7 @@ function selectResult(result) {
   }
 
   if (props.mode === 'picker') {
-    coords.value = { lat: result.lat, lng: result.lng }
-    setPickerMarker([result.lng, result.lat])
-    emit('update:modelValue', coords.value)
+    setCoords(result.lat, result.lng, result.address)
   } else if (props.mode === 'route') {
     addRoutePoint({ lat: result.lat, lng: result.lng })
   }
@@ -459,8 +516,7 @@ function setPickerMarker(lngLat) {
       .addTo(map)
     pickerMarker.on('dragend', () => {
       const pos = pickerMarker.getLngLat()
-      coords.value = { lat: pos.lat, lng: pos.lng }
-      emit('update:modelValue', coords.value)
+      setCoords(pos.lat, pos.lng)
     })
   } else {
     pickerMarker.setLngLat(lngLat)
@@ -514,9 +570,7 @@ onMounted(async () => {
   if (props.mode === 'picker') {
     map.on('click', (e) => {
       const { lng, lat } = e.lngLat
-      coords.value = { lat, lng }
-      setPickerMarker([lng, lat])
-      emit('update:modelValue', coords.value)
+      setCoords(lat, lng)
     })
   } else if (props.mode === 'route') {
     map.on('click', (e) => {
@@ -554,6 +608,7 @@ watch(
 onBeforeUnmount(() => {
   clearTimeout(searchDebounce)
   if (searchAbortController) searchAbortController.abort()
+  if (reverseAbortController) reverseAbortController.abort()
   if (navResizeObserver) navResizeObserver.disconnect()
   window.removeEventListener('resize', measureNavOffset)
   clearDisplayMarkers()
