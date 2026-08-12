@@ -189,11 +189,10 @@ import { reactive, ref, watch, onMounted } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import PropertyMap from '@/components/PropertyMap.vue'
 import { usePropertyTypes } from '@/stores/propertyTypes'
+import propertySubmissionService from '@/services/propertySubmissionService'
 
 const route = useRoute()
 const router = useRouter()
-
-const STORAGE_KEY = 'tawi_admin_feature_requests'
 
 const {
   propertyTypes,
@@ -210,11 +209,14 @@ function blankForm() {
     priceRange: '',
     location: '',
     description: '',
-    photo: ''
+    photo: '' // base64 preview only, shown in the template — the real
+               // File object lives in photoFile below and is what
+               // actually gets uploaded.
   }
 }
 
 const form = reactive(blankForm())
+const photoFile = ref(null) // the actual File selected via the input, or null
 const pin = ref(null) // { lat, lng } | null — set via the PropertyMap picker
 const submitting = ref(false)
 const submitted = ref(false)
@@ -271,13 +273,14 @@ onMounted(() => {
   router.replace({ path: route.path, query: cleanQuery })
 })
 
-function makeId() {
-  return (crypto.randomUUID && crypto.randomUUID()) || `${Date.now()}-${Math.random().toString(16).slice(2)}`
-}
-
 function handlePhoto(event) {
   const file = event.target.files && event.target.files[0]
   if (!file) return
+
+  photoFile.value = file
+
+  // Base64 preview only — for the <img> in the template. The upload
+  // itself uses photoFile (the raw File), not this string.
   const reader = new FileReader()
   reader.onload = () => {
     form.photo = reader.result
@@ -285,7 +288,7 @@ function handlePhoto(event) {
   reader.readAsDataURL(file)
 }
 
-function handleSubmit() {
+async function handleSubmit() {
   error.value = ''
 
   if (!form.fullName || !form.email || !form.phone || !form.priceRange || !form.location) {
@@ -295,33 +298,36 @@ function handleSubmit() {
 
   submitting.value = true
 
-  // No backend yet — store the request alongside what the Admin dashboard reads,
-  // so it shows up in the pending queue there. Swap this for a real API call later.
-  setTimeout(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      const existing = raw ? JSON.parse(raw) : []
-      existing.unshift({
-        id: makeId(),
-        ...form,
-        latitude: pin.value ? pin.value.lat : null,
-        longitude: pin.value ? pin.value.lng : null,
-        status: 'pending',
-        submittedAt: new Date().toISOString().slice(0, 10)
-      })
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(existing))
-    } catch (e) {
-      // storage unavailable — submission still confirms to the user this session
+  try {
+    const payload = new FormData()
+    payload.append('type', form.type)
+    payload.append('full_name', form.fullName)
+    payload.append('email', form.email)
+    payload.append('phone', form.phone)
+    payload.append('price_range', form.priceRange)
+    payload.append('location', form.location)
+    if (form.description) payload.append('description', form.description)
+    if (photoFile.value) payload.append('photo', photoFile.value)
+    if (pin.value) {
+      payload.append('latitude', pin.value.lat)
+      payload.append('longitude', pin.value.lng)
     }
 
+    await propertySubmissionService.submit(payload)
+
     lastSubmittedName.value = form.fullName
-    submitting.value = false
     submitted.value = true
-  }, 700)
+  } catch (err) {
+    error.value = err.response?.data?.message
+      || 'Something went wrong submitting your property. Please try again.'
+  } finally {
+    submitting.value = false
+  }
 }
 
 function resetForm() {
   Object.assign(form, blankForm())
+  photoFile.value = null
   pin.value = null
   submitted.value = false
   error.value = ''

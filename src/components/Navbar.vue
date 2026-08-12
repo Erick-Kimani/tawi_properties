@@ -26,6 +26,7 @@
 
     <div v-if="dropdownOpen" class="nav__dropdown-menu">
       <RouterLink to="/property-map" @click="dropdownOpen = false">Map</RouterLink>
+      <RouterLink to="/contact" @click="dropdownOpen = false">Contact</RouterLink>
     </div>
   </div>
 </nav>
@@ -53,6 +54,7 @@
       <RouterLink to="/buy" @click="menuOpen = false">Buy</RouterLink>
       <RouterLink to="/rent" @click="menuOpen = false">Rent</RouterLink>
       <RouterLink to="/property-map" @click="menuOpen = false">Map</RouterLink>
+      <RouterLink to="/contact" @click="menuOpen = false">Contact</RouterLink>
       <RouterLink class="nav__cta" to="/list-property" @click="menuOpen = false">List a property</RouterLink>
       <button
         v-if="authStore.isAuthenticated"
@@ -80,7 +82,9 @@ const menuOpen = ref(false)
 const dropdownOpen = ref(false)
 const loggingOut = ref(false)
 
-const isMoreActive = computed(() => route.path.startsWith('/property-map'))
+const isMoreActive = computed(() =>
+  route.path.startsWith('/property-map') || route.path.startsWith('/contact')
+)
 
 async function handleLogout() {
   if (loggingOut.value) return

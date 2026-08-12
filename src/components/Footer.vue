@@ -69,6 +69,7 @@
         
         <!-- Add the v-if condition right here -->
         <RouterLink v-if="authStore.user?.role?.slug === 'administrator'" to="/admin">Admin</RouterLink>
+        <RouterLink to="/contact">Contact</RouterLink>
       </nav>
 
 

@@ -9,6 +9,7 @@ import PropertyMap from '../components/PropertyMap.vue'
 import CategoryListing from '../views/Categorylisting.vue'
 import BuyPage from '../views/Buypage.vue'
 import RentPage from '../views/Rentpage.vue'
+import Contact from '../views/Contact.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -69,6 +70,11 @@ const router = createRouter({
       name: 'category',
       component: CategoryListing,
       props: true,
+    },
+    {
+      path:'/contact',
+      name: 'contact',
+      component: Contact,
     }
   ],
 })

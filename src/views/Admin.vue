@@ -120,6 +120,119 @@
       <p>No submissions match this filter yet.</p>
     </div>
 
+    <section class="admin__messages" ref="messagesRef">
+      <div class="admin__counties-head">
+        <div>
+          <h2 class="admin__counties-title">Messages</h2>
+          <p class="admin__counties-sub">
+            Sent through the Contact Us page. Every message comes from a signed-in
+            account, so there's no email to verify.
+          </p>
+        </div>
+        <div class="admin__stats admin__counties-stats">
+          <div class="stat">
+            <span class="stat__value">{{ messages.length }}</span>
+            <span class="stat__label">Total</span>
+          </div>
+          <div class="stat">
+            <span class="stat__value">{{ newMessagesCount }}</span>
+            <span class="stat__label">New</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin__toolbar">
+        <div class="admin__search">
+          <input
+            v-model="messageSearchQuery"
+            type="search"
+            placeholder="Search messages..."
+            aria-label="Search messages"
+          />
+        </div>
+
+        <div class="admin__filters">
+          <button
+            v-for="f in messageFilters"
+            :key="f"
+            class="filter-pill"
+            :class="{ 'filter-pill--active': activeMessageFilter === f }"
+            @click="activeMessageFilter = f"
+          >
+            {{ f }}
+          </button>
+        </div>
+      </div>
+
+      <p v-if="messagesLoading" class="admin__status-text">Loading messages…</p>
+      <p v-if="messagesError" class="admin__status-text admin__status-text--error">
+        {{ messagesError }}
+      </p>
+
+      <div
+        class="admin__table card-surface"
+        ref="messagesTableRef"
+        v-if="messages.length && filteredMessages.length"
+      >
+        <table>
+          <thead>
+            <tr>
+              <th>From</th>
+              <th>Message</th>
+              <th>Status</th>
+              <th>Date</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="msg in filteredMessages"
+              :key="msg.id"
+              :data-message-row-id="msg.id"
+            >
+              <td>
+                <div class="contact">
+                  <span>{{ msg.senderName }}</span>
+                  <span class="contact__phone">{{ msg.senderEmail }}</span>
+                </div>
+              </td>
+              <td class="admin__message-text">{{ msg.message }}</td>
+              <td>
+                <span class="status-pill" :class="'status-pill--' + msg.status">
+                  {{ msg.status }}
+                </span>
+              </td>
+              <td class="admin__date">{{ msg.createdAt }}</td>
+              <td class="admin__actions">
+                <button
+                  v-if="msg.status === 'new'"
+                  class="action action--feature"
+                  @click="handleMarkRead(msg.id)"
+                >
+                  Mark read
+                </button>
+                <button
+                  v-if="msg.status !== 'resolved'"
+                  class="action action--unfeature"
+                  @click="handleResolve(msg.id)"
+                >
+                  Resolve
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="admin__empty card-surface" v-else-if="messages.length === 0 && !messagesLoading">
+        <p>No messages yet.</p>
+      </div>
+
+      <div class="admin__empty card-surface" v-else-if="!messagesLoading">
+        <p>No messages match this filter yet.</p>
+      </div>
+    </section>
+
     <section class="admin__counties" ref="countiesRef">
       <div class="admin__counties-head">
         <div>
@@ -218,6 +331,7 @@ import { computed, ref, onMounted, nextTick, watch } from 'vue'
 import { animate } from 'animejs'
 import { useCounties } from '@/stores/counties'
 import propertySubmissionService from '@/services/propertySubmissionService'
+import contactMessageService from '@/services/contactMessageService'
 
 const rows = ref([])
 const loading = ref(true)
@@ -228,6 +342,7 @@ const statsRef = ref(null)
 const toolbarRef = ref(null)
 const tableRef = ref(null)
 const emptyRef = ref(null)
+const messagesRef = ref(null)
 
 // Maps the API's snake_case submission shape onto what the template expects.
 function mapSubmission(s) {
@@ -393,6 +508,85 @@ const filteredRows = computed(() => {
 const featuredCount = computed(() => rows.value.filter((r) => r.status === 'featured').length)
 const pendingCount = computed(() => rows.value.filter((r) => r.status === 'pending').length)
 
+// --- Contact messages --------------------------------------------------
+const messages = ref([])
+const messagesLoading = ref(true)
+const messagesError = ref('')
+const messagesTableRef = ref(null)
+
+function mapMessage(m) {
+  return {
+    id: m.id,
+    senderName: m.sender?.name || 'Unknown',
+    senderEmail: m.sender?.email || '',
+    message: m.message,
+    status: m.status,
+    createdAt: m.created_at ? m.created_at.slice(0, 10) : ''
+  }
+}
+
+async function loadMessages() {
+  messagesLoading.value = true
+  messagesError.value = ''
+  try {
+    const { data } = await contactMessageService.getAll()
+    messages.value = (data.data || data).map(mapMessage)
+  } catch (e) {
+    messagesError.value = 'Could not load messages. Please refresh and try again.'
+  } finally {
+    messagesLoading.value = false
+  }
+}
+
+async function handleMarkRead(id) {
+  const msg = messages.value.find((m) => m.id === id)
+  if (!msg) return
+  messagesError.value = ''
+  try {
+    await contactMessageService.markRead(id)
+    msg.status = 'read'
+  } catch (e) {
+    messagesError.value = 'Could not mark this message as read. Please try again.'
+  }
+}
+
+async function handleResolve(id) {
+  const msg = messages.value.find((m) => m.id === id)
+  if (!msg) return
+  messagesError.value = ''
+  try {
+    await contactMessageService.resolve(id)
+    msg.status = 'resolved'
+  } catch (e) {
+    messagesError.value = 'Could not resolve this message. Please try again.'
+  }
+}
+
+const messageFilters = ['All', 'New', 'Read', 'Resolved']
+const activeMessageFilter = ref('All')
+const messageSearchQuery = ref('')
+
+const filteredMessages = computed(() => {
+  let result = messages.value
+
+  if (activeMessageFilter.value !== 'All') {
+    result = result.filter((m) => m.status === activeMessageFilter.value.toLowerCase())
+  }
+
+  const query = messageSearchQuery.value.trim().toLowerCase()
+  if (!query) return result
+
+  return result.filter((m) => {
+    const haystack = [m.senderName, m.senderEmail, m.message, m.status]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+    return haystack.includes(query)
+  })
+})
+
+const newMessagesCount = computed(() => messages.value.filter((m) => m.status === 'new').length)
+
 // --- Manage counties -------------------------------------------------
 // Pulling a county down here hides it from the LocationDropdown used on
 // the Home, Categories, Buy and Rent pages (see src/stores/counties.js).
@@ -422,6 +616,7 @@ const filteredCounties = computed(() => {
 
 onMounted(() => {
   loadRows()
+  loadMessages()
 
   nextTick(() => {
     if (heroInnerRef.value) {
@@ -463,6 +658,22 @@ watch(filteredRows, () => {
     if (filteredRows.value.length) {
       animateRows()
     }
+  })
+}, { flush: 'post' })
+
+watch(filteredMessages, () => {
+  nextTick(() => {
+    if (!messagesTableRef.value) return
+    const rowsInTable = messagesTableRef.value.querySelectorAll('tbody tr')
+    if (!rowsInTable.length) return
+    animate({
+      targets: rowsInTable,
+      opacity: [0, 1],
+      translateY: [16, 0],
+      duration: 480,
+      delay: (el, i) => i * 70,
+      easing: 'easeOutQuad'
+    })
   })
 }, { flush: 'post' })
 </script>
@@ -788,6 +999,28 @@ tbody tr:hover { background: rgba(237, 231, 218, 0.03); }
 .status-pill--rejected {
   color: #d98b6a;
   background: rgba(217, 139, 106, 0.14);
+}
+
+.status-pill--new {
+  color: var(--sky);
+  background: rgba(123, 183, 214, 0.14);
+}
+
+.status-pill--read {
+  color: var(--bone-dim);
+  background: rgba(237, 231, 218, 0.08);
+}
+
+.admin__message-text {
+  max-width: 360px;
+  white-space: normal;
+  line-height: 1.5;
+}
+
+.admin__messages {
+  margin-top: 56px;
+  padding-top: 32px;
+  border-top: 1px solid rgba(237, 231, 218, 0.12);
 }
 
 .admin__counties {
