@@ -1,85 +1,107 @@
 // Single source of truth for which Kenyan counties are shown in every
 // location dropdown across the app (Home, Categories, Buy, Rent).
 //
-// The full list of counties still lives in `src/data/kenyanCounties.js`.
-// This store layers an "active / hidden" state on top of that list so the
-// Admin dashboard can pull a county down from the public dropdowns without
-// ever deleting it from the master data. Hidden counties are persisted to
-// localStorage so the change survives page reloads, and the state is a
-// module-level singleton so every component that calls `useCounties()`
-// shares the same reactive list.
+// Previously this store layered "active/hidden" state (kept in
+// localStorage) on top of the static list in `src/data/kenyanCounties.js`.
+// The county list AND its status now both live on the backend (see the
+// `counties` table / CountyController), so there's a single source of
+// truth shared by every admin and every device — no more resets on
+// refresh or login.
+//
+// The public API (allCounties, activeCounties, hiddenCounties, isHidden,
+// hideCounty, restoreCounty, toggleCounty) is unchanged so existing
+// components — including Admin.vue and the public dropdowns — keep working
+// with only small additions (loading/error state, and fetchCounties()
+// needs to be called once, e.g. from App.vue or an onMounted hook).
 
-import { reactive, computed, readonly } from 'vue'
-import { kenyanCounties } from '@/data/kenyanCounties'
-
-const STORAGE_KEY = 'tawi_hidden_counties'
-
-function loadHidden() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed.filter((c) => kenyanCounties.includes(c)) : []
-  } catch (e) {
-    // storage unavailable or corrupted value — fall back to nothing hidden
-    return []
-  }
-}
+import { reactive, computed } from 'vue'
+import countyService from '@/services/countyService'
 
 // Module-scoped (singleton) reactive state shared by every component that
 // imports this store.
 const state = reactive({
-  hidden: loadHidden()
+  counties: [], // [{ id, name, status }]
+  loading: false,
+  error: '',
+  fetched: false
 })
 
-function persist() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.hidden))
-  } catch (e) {
-    // storage unavailable — state still works in-memory for this session
-  }
-}
-
 export function useCounties() {
-  // The full, untouched list of all 47 counties (master data).
-  const allCounties = kenyanCounties
+  // Fetches from the backend once per session; safe to call from every
+  // component that uses this store (Home, Categories, Buy, Rent, Admin) —
+  // subsequent calls are no-ops unless force is true.
+  async function fetchCounties(force = false) {
+    if (state.fetched && !force) return
+    state.loading = true
+    state.error = ''
+    try {
+      const { data } = await countyService.getAll()
+      state.counties = data
+      state.fetched = true
+    } catch (e) {
+      state.error = 'Could not load counties. Please refresh and try again.'
+    } finally {
+      state.loading = false
+    }
+  }
+
+  // The full list of all counties (master data), regardless of status.
+  const allCounties = computed(() => state.counties.map((c) => c.name))
 
   // What every public dropdown (Home, Categories, Buy, Rent) should render.
   const activeCounties = computed(() =>
-    allCounties.filter((county) => !state.hidden.includes(county))
+    state.counties.filter((c) => c.status === 'active').map((c) => c.name)
   )
 
   // What the Admin page lists as "pulled down".
   const hiddenCounties = computed(() =>
-    allCounties.filter((county) => state.hidden.includes(county))
+    state.counties.filter((c) => c.status === 'pulled_down').map((c) => c.name)
   )
 
-  function isHidden(county) {
-    return state.hidden.includes(county)
+  function findByName(name) {
+    return state.counties.find((c) => c.name === name)
+  }
+
+  function isHidden(name) {
+    const county = findByName(name)
+    return county ? county.status === 'pulled_down' : false
   }
 
   // Pull a county down from the public dropdowns (does NOT delete it).
-  function hideCounty(county) {
-    if (!state.hidden.includes(county)) {
-      state.hidden.push(county)
-      persist()
+  // Optimistic update with rollback on failure, same pattern as
+  // handleFeature/handleReject in Admin.vue.
+  async function hideCounty(name) {
+    const county = findByName(name)
+    if (!county || county.status === 'pulled_down') return
+    const previousStatus = county.status
+    county.status = 'pulled_down'
+    try {
+      await countyService.pullDown(county.id)
+    } catch (e) {
+      county.status = previousStatus
+      throw e
     }
   }
 
   // Restore a previously pulled-down county to the public dropdowns.
-  function restoreCounty(county) {
-    const idx = state.hidden.indexOf(county)
-    if (idx !== -1) {
-      state.hidden.splice(idx, 1)
-      persist()
+  async function restoreCounty(name) {
+    const county = findByName(name)
+    if (!county || county.status === 'active') return
+    const previousStatus = county.status
+    county.status = 'active'
+    try {
+      await countyService.restore(county.id)
+    } catch (e) {
+      county.status = previousStatus
+      throw e
     }
   }
 
-  function toggleCounty(county) {
-    if (isHidden(county)) {
-      restoreCounty(county)
+  async function toggleCounty(name) {
+    if (isHidden(name)) {
+      await restoreCounty(name)
     } else {
-      hideCounty(county)
+      await hideCounty(name)
     }
   }
 
@@ -87,11 +109,13 @@ export function useCounties() {
     allCounties,
     activeCounties,
     hiddenCounties,
-    hiddenList: readonly(state.hidden),
     isHidden,
     hideCounty,
     restoreCounty,
-    toggleCounty
+    toggleCounty,
+    fetchCounties,
+    countiesLoading: computed(() => state.loading),
+    countiesError: computed(() => state.error)
   }
 }
 

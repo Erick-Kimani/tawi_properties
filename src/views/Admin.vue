@@ -277,6 +277,14 @@
         </div>
       </div>
 
+      <p v-if="countiesLoading" class="admin__status-text">Loading counties…</p>
+      <p v-if="countiesError" class="admin__status-text admin__status-text--error">
+        {{ countiesError }}
+      </p>
+      <p v-if="countyActionError" class="admin__status-text admin__status-text--error">
+        {{ countyActionError }}
+      </p>
+
       <div class="admin__table card-surface" v-if="filteredCounties.length">
         <table>
           <thead>
@@ -301,14 +309,14 @@
                 <button
                   v-if="!isHidden(county)"
                   class="action action--delete"
-                  @click="hideCounty(county)"
+                  @click="handlePullDown(county)"
                 >
                   Pull down
                 </button>
                 <button
                   v-else
                   class="action action--feature"
-                  @click="restoreCounty(county)"
+                  @click="handleRestore(county)"
                 >
                   Restore
                 </button>
@@ -318,7 +326,7 @@
         </table>
       </div>
 
-      <div class="admin__empty card-surface" v-else>
+      <div class="admin__empty card-surface" v-else-if="!countiesLoading">
         <p>No counties match this search.</p>
       </div>
     </section>
@@ -591,16 +599,46 @@ const newMessagesCount = computed(() => messages.value.filter((m) => m.status ==
 // Pulling a county down here hides it from the LocationDropdown used on
 // the Home, Categories, Buy and Rent pages (see src/stores/counties.js).
 // It stays in the master list and can be restored at any time.
-const { allCounties, activeCounties, hiddenCounties, isHidden, hideCounty, restoreCounty } =
-  useCounties()
+const {
+  allCounties,
+  activeCounties,
+  hiddenCounties,
+  isHidden,
+  hideCounty,
+  restoreCounty,
+  fetchCounties,
+  countiesLoading,
+  countiesError
+} = useCounties()
 
 const countiesRef = ref(null)
 const countyQuery = ref('')
 const countyFilters = ['All', 'Active', 'Pulled down']
 const activeCountyFilter = ref('All')
+const countyActionError = ref('')
+
+// "Pull down" — hides the county from the public dropdowns.
+async function handlePullDown(county) {
+  countyActionError.value = ''
+  try {
+    await hideCounty(county)
+  } catch (e) {
+    countyActionError.value = `Could not pull down ${county}. Please try again.`
+  }
+}
+
+// "Restore" — brings a pulled-down county back into the public dropdowns.
+async function handleRestore(county) {
+  countyActionError.value = ''
+  try {
+    await restoreCounty(county)
+  } catch (e) {
+    countyActionError.value = `Could not restore ${county}. Please try again.`
+  }
+}
 
 const filteredCounties = computed(() => {
-  let result = allCounties
+  let result = allCounties.value
 
   if (activeCountyFilter.value === 'Active') {
     result = activeCounties.value
@@ -617,6 +655,7 @@ const filteredCounties = computed(() => {
 onMounted(() => {
   loadRows()
   loadMessages()
+  fetchCounties()
 
   nextTick(() => {
     if (heroInnerRef.value) {
