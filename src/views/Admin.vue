@@ -224,10 +224,19 @@
               </td>
               <td class="admin__message-text">
                 {{ msg.message }}
-                <p v-if="msg.adminReply" class="admin__message-reply">
-                  <span class="admin__message-reply-label">Your reply:</span>
-                  {{ msg.adminReply }}
-                </p>
+                <div v-if="msg.replies.length" class="admin__message-thread">
+                  <p
+                    v-for="r in msg.replies"
+                    :key="r.id"
+                    class="admin__message-reply"
+                    :class="{ 'admin__message-reply--admin': r.isAdmin }"
+                  >
+                    <span class="admin__message-reply-label">
+                      {{ r.isAdmin ? 'You' : msg.senderName }} · {{ r.createdAt }}
+                    </span>
+                    {{ r.body }}
+                  </p>
+                </div>
               </td>
               <td>
                 <span class="status-pill" :class="'status-pill--' + msg.status">
@@ -244,7 +253,7 @@
                   Mark read
                 </button>
                 <button class="action action--feature" @click="openReplyModal(msg)">
-                  {{ msg.adminReply ? 'Reply again' : 'Reply' }}
+                  {{ msg.replies.length ? 'Reply again' : 'Reply' }}
                 </button>
                 <button
                   v-if="msg.status !== 'resolved'"
@@ -606,7 +615,16 @@ function mapMessage(m) {
     senderName: m.sender?.name || 'Unknown',
     senderEmail: m.sender?.email || '',
     message: m.message,
-    adminReply: m.admin_reply || '',
+    // Full back-and-forth thread — both the admin's replies and any
+    // follow-ups from the sender, oldest first (matches the backend's
+    // `replies()` ordering). Each entry: { id, body, isAdmin, authorName, createdAt }.
+    replies: (m.replies || []).map((r) => ({
+      id: r.id,
+      body: r.body,
+      isAdmin: !!r.is_admin,
+      authorName: r.user?.name || (r.is_admin ? 'Support' : 'Unknown'),
+      createdAt: r.created_at ? r.created_at.slice(0, 10) : ''
+    })),
     status: m.status,
     createdAt: m.created_at ? m.created_at.slice(0, 10) : ''
   }
@@ -683,11 +701,19 @@ async function submitReply() {
   replyError.value = ''
 
   try {
-    await contactMessageService.reply(replyTarget.value.id, text)
+    const { data } = await contactMessageService.reply(replyTarget.value.id, text)
 
     const msg = messages.value.find((m) => m.id === replyTarget.value.id)
     if (msg) {
-      msg.adminReply = text
+      // Trust the server's copy of the thread rather than guessing the new
+      // reply's id/author/timestamp client-side.
+      msg.replies = (data.contact_message?.replies || []).map((r) => ({
+        id: r.id,
+        body: r.body,
+        isAdmin: !!r.is_admin,
+        authorName: r.user?.name || (r.is_admin ? 'Support' : 'Unknown'),
+        createdAt: r.created_at ? r.created_at.slice(0, 10) : ''
+      }))
       if (msg.status !== 'resolved') msg.status = 'replied'
     }
 
@@ -716,7 +742,13 @@ const filteredMessages = computed(() => {
   if (!query) return result
 
   return result.filter((m) => {
-    const haystack = [m.senderName, m.senderEmail, m.message, m.adminReply, m.status]
+    const haystack = [
+      m.senderName,
+      m.senderEmail,
+      m.message,
+      ...m.replies.map((r) => r.body),
+      m.status
+    ]
       .filter(Boolean)
       .join(' ')
       .toLowerCase()
@@ -1216,12 +1248,24 @@ tbody tr:hover { background: rgba(237, 231, 218, 0.03); }
   line-height: 1.5;
 }
 
-.admin__message-reply {
-  margin: 8px 0 0;
+.admin__message-thread {
+  margin-top: 8px;
   padding-top: 8px;
   border-top: 1px dashed rgba(237, 231, 218, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin__message-reply {
+  margin: 0;
   font-size: 13px;
   color: var(--bone-dim);
+}
+
+.admin__message-reply--admin {
+  padding-left: 10px;
+  border-left: 2px solid rgba(209, 178, 127, 0.4);
 }
 
 .admin__message-reply-label {

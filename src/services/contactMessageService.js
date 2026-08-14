@@ -8,18 +8,11 @@ export const contactMessageService = {
     return apiClient.post('/contact-messages', { message })
   },
 
-  // The signed-in user's own threads, each with its full reply history —
-  // powers the Contact page's "your conversations" view.
+  // The logged-in user's own messages + reply threads. Scoped server-side
+  // to their user_id — never returns anyone else's. Powers Contact.vue's
+  // "your messages" view.
   getMine() {
     return apiClient.get('/contact-messages/mine')
-  },
-
-  // Post a reply on a thread. Works for both the owning user (continuing
-  // their own conversation) and an admin (replying from the inbox) — the
-  // backend decides is_admin from who's authenticated, not from anything
-  // the client sends.
-  addReply(id, body) {
-    return apiClient.post(`/contact-messages/${id}/replies`, { body })
   },
 
   // Admin only — the shared inbox.
@@ -37,6 +30,13 @@ export const contactMessageService = {
 
   resolve(id) {
     return apiClient.put(`/contact-messages/${id}/resolve`)
+  },
+
+  // Admin only — appends the admin's reply to the message's thread
+  // in-app (see ContactMessageController@reply / contact_message_replies).
+  // Not an email — the sender sees it next time they view the thread.
+  reply(id, replyText) {
+    return apiClient.put(`/contact-messages/${id}/reply`, { reply: replyText })
   }
 }
 

@@ -11,8 +11,9 @@
           Questions, suggestions, or something not working right?
         </h1>
         <p class="contact__intro-sub">
-          Send us a message and our team will reply right here — no need to check
-          your email. Since you're signed in, we already know who you are.
+          Send us a message and our team will get back to you. Since you're signed
+          in, we already have your account on file — no need to re-enter your
+          email or phone number.
         </p>
 
         <ul class="contact__benefits">
@@ -22,219 +23,159 @@
           </li>
           <li>
             <span class="contact__benefit-mark">02</span>
-            Replies show up in the conversation below, and you can keep replying
+            We reply using the contact details already on your account
           </li>
         </ul>
       </div>
 
-      <!-- Main content: compose + conversations -->
-      <div class="contact__main">
-        <!-- Compose card -->
-        <div class="contact__card">
-          <div class="contact__header">
-            <p class="contact__eyebrow contact__eyebrow--card">Contact us</p>
-            <h2 class="contact__title">Start a new conversation</h2>
-            <p class="contact__sub">
-              Signed in as <strong>{{ authStore.user?.name || authStore.user?.email }}</strong>.
-            </p>
-          </div>
-
-          <form class="contact__form" @submit.prevent="handleSend">
-            <div class="field">
-              <label for="message">Your message</label>
-              <textarea
-                id="message"
-                v-model="messageText"
-                rows="5"
-                placeholder="What's on your mind? A question, a suggestion, a bug you've run into..."
-                required
-              ></textarea>
-            </div>
-
-            <p v-if="sendError" class="field__error">{{ sendError }}</p>
-
-            <button type="submit" class="contact__submit" :disabled="sending">
-              {{ sending ? 'Sending…' : 'Send message' }}
-            </button>
-          </form>
-        </div>
-
-        <!-- Conversations -->
-        <div class="contact__threads">
-          <div class="contact__threads-head">
-            <h2 class="contact__threads-title">Your conversations</h2>
-          </div>
-
-          <p v-if="threadsLoading" class="contact__status-text">Loading your messages…</p>
-          <p v-if="threadsError" class="contact__status-text contact__status-text--error">
-            {{ threadsError }}
+      <!-- Message card -->
+      <div class="contact__card">
+        <div class="contact__header">
+          <p class="contact__eyebrow contact__eyebrow--card">Contact us</p>
+          <h2 class="contact__title">Send a message</h2>
+          <p class="contact__sub">
+            Signed in as <strong>{{ authStore.user?.name || authStore.user?.email }}</strong>.
           </p>
+        </div>
 
-          <div
-            v-if="!threadsLoading && !threadsError && threads.length === 0"
-            class="contact__empty"
-          >
-            <p>No messages yet — send one above to start a conversation.</p>
-          </div>
+        <!-- Your messages — every thread the sender has ever started, with
+             any replies from the team. Fetched from /contact-messages/mine,
+             scoped server-side to this user so it can never show anyone
+             else's messages. -->
+        <div v-if="messagesLoading" class="contact__thread-status">Loading your messages…</div>
+        <p v-else-if="messagesError" class="field__error">{{ messagesError }}</p>
 
-          <div v-else class="contact__thread-list">
-            <article v-for="thread in threads" :key="thread.id" class="thread-card">
-              <div class="thread-card__head">
-                <span class="status-pill" :class="'status-pill--' + thread.status">
-                  {{ thread.status }}
+        <div v-if="!messagesLoading && threads.length" class="contact__threads">
+          <p class="contact__threads-label">Your messages</p>
+
+          <div v-for="t in threads" :key="t.id" class="contact__thread">
+            <div class="contact__thread-head">
+              <span class="status-pill" :class="'status-pill--' + t.status">{{ t.status }}</span>
+              <span class="contact__thread-date">{{ t.createdAt }}</span>
+            </div>
+            <p class="contact__thread-message">{{ t.message }}</p>
+
+            <div v-if="t.replies.length" class="contact__thread-replies">
+              <p
+                v-for="r in t.replies"
+                :key="r.id"
+                class="contact__thread-reply"
+                :class="{ 'contact__thread-reply--admin': r.isAdmin }"
+              >
+                <span class="contact__thread-reply-label">
+                  {{ r.isAdmin ? 'Tawi Properties' : 'You' }} · {{ r.createdAt }}
                 </span>
-                <span class="thread-card__date">{{ thread.createdAt }}</span>
-              </div>
-
-              <div class="thread-card__bubbles">
-                <!-- Original message -->
-                <div class="bubble bubble--user">
-                  <p class="bubble__author">You</p>
-                  <p class="bubble__body">{{ thread.message }}</p>
-                </div>
-
-                <!-- Replies -->
-                <div
-                  v-for="reply in thread.replies"
-                  :key="reply.id"
-                  class="bubble"
-                  :class="reply.isAdmin ? 'bubble--admin' : 'bubble--user'"
-                >
-                  <p class="bubble__author">{{ reply.isAdmin ? 'Support' : 'You' }}</p>
-                  <p class="bubble__body">{{ reply.body }}</p>
-                  <p class="bubble__date">{{ reply.createdAt }}</p>
-                </div>
-              </div>
-
-              <form class="thread-card__reply" @submit.prevent="handleReply(thread.id)">
-                <textarea
-                  v-model="replyDrafts[thread.id]"
-                  rows="2"
-                  placeholder="Reply..."
-                  required
-                ></textarea>
-                <button type="submit" :disabled="replySending[thread.id]">
-                  {{ replySending[thread.id] ? 'Sending…' : 'Reply' }}
-                </button>
-              </form>
-              <p v-if="replyErrors[thread.id]" class="field__error">
-                {{ replyErrors[thread.id] }}
+                {{ r.body }}
               </p>
-            </article>
+            </div>
           </div>
         </div>
+
+        <form class="contact__form" @submit.prevent="handleSubmit">
+          <div class="field">
+            <label for="message">{{ threads.length ? 'Send another message' : 'Your message' }}</label>
+            <textarea
+              id="message"
+              v-model="messageText"
+              rows="7"
+              placeholder="What's on your mind? A question, a suggestion, a bug you've run into..."
+              required
+            ></textarea>
+          </div>
+
+          <p v-if="error" class="field__error">{{ error }}</p>
+          <p v-if="justSent" class="contact__sent-note">✓ Sent — it now appears above.</p>
+
+          <button type="submit" class="contact__submit" :disabled="submitting">
+            {{ submitting ? 'Sending…' : 'Send message' }}
+          </button>
+        </form>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import contactMessageService from '@/services/contactMessageService'
 
 const authStore = useAuthStore()
 
-// --- Compose (new thread) -----------------------------------------------
 const messageText = ref('')
-const sending = ref(false)
-const sendError = ref('')
+const submitting = ref(false)
+const justSent = ref(false)
+const error = ref('')
 
-async function handleSend() {
-  sendError.value = ''
+const threads = ref([])
+const messagesLoading = ref(true)
+const messagesError = ref('')
+
+function mapThread(m) {
+  return {
+    id: m.id,
+    message: m.message,
+    status: m.status,
+    createdAt: m.created_at ? m.created_at.slice(0, 10) : '',
+    replies: (m.replies || []).map((r) => ({
+      id: r.id,
+      body: r.body,
+      isAdmin: !!r.is_admin,
+      createdAt: r.created_at ? r.created_at.slice(0, 10) : ''
+    }))
+  }
+}
+
+async function loadThreads() {
+  messagesLoading.value = true
+  messagesError.value = ''
+  try {
+    const { data } = await contactMessageService.getMine()
+    threads.value = data.map(mapThread)
+  } catch (e) {
+    messagesError.value = 'Could not load your previous messages.'
+  } finally {
+    messagesLoading.value = false
+  }
+}
+
+onMounted(loadThreads)
+
+async function handleSubmit() {
+  error.value = ''
+  justSent.value = false
 
   if (messageText.value.trim().length < 5) {
-    sendError.value = 'Please write a bit more detail before sending.'
+    error.value = 'Please write a bit more detail before sending.'
     return
   }
 
-  sending.value = true
+  submitting.value = true
 
   try {
     await contactMessageService.send(messageText.value.trim())
     messageText.value = ''
-    // Pull the new thread into the list below without a full-page reload.
-    await loadThreads(true)
+    justSent.value = true
+    // Re-fetch rather than optimistically prepending — keeps the status
+    // pill and any server-assigned fields (id, timestamps) accurate.
+    await loadThreads()
   } catch (err) {
-    sendError.value = err.response?.data?.message
+    error.value = err.response?.data?.message
       || 'Something went wrong sending your message. Please try again.'
   } finally {
-    sending.value = false
+    submitting.value = false
   }
 }
-
-// --- Conversations (threads + replies) -----------------------------------
-const threads = ref([])
-const threadsLoading = ref(true)
-const threadsError = ref('')
-
-function mapReply(r) {
-  return {
-    id: r.id,
-    body: r.body,
-    isAdmin: !!r.is_admin,
-    createdAt: r.created_at ? r.created_at.slice(0, 10) : ''
-  }
-}
-
-function mapThread(t) {
-  return {
-    id: t.id,
-    message: t.message,
-    status: t.status,
-    createdAt: t.created_at ? t.created_at.slice(0, 10) : '',
-    replies: (t.replies || []).map(mapReply)
-  }
-}
-
-// `silent` skips the full-page loading text so replying/sending doesn't
-// flash the whole conversation list back to a "Loading…" state.
-async function loadThreads(silent = false) {
-  if (!silent) threadsLoading.value = true
-  threadsError.value = ''
-  try {
-    const { data } = await contactMessageService.getMine()
-    threads.value = (data.data || data).map(mapThread)
-  } catch (e) {
-    threadsError.value = 'Could not load your messages. Please refresh and try again.'
-  } finally {
-    threadsLoading.value = false
-  }
-}
-
-// --- Replying on an existing thread --------------------------------------
-const replyDrafts = reactive({})
-const replySending = reactive({})
-const replyErrors = reactive({})
-
-async function handleReply(threadId) {
-  const body = (replyDrafts[threadId] || '').trim()
-  if (!body) return
-
-  replyErrors[threadId] = ''
-  replySending[threadId] = true
-
-  try {
-    await contactMessageService.addReply(threadId, body)
-    replyDrafts[threadId] = ''
-    await loadThreads(true)
-  } catch (e) {
-    replyErrors[threadId] = 'Could not send your reply. Please try again.'
-  } finally {
-    replySending[threadId] = false
-  }
-}
-
-onMounted(() => {
-  loadThreads()
-})
 </script>
 
 <style scoped>
 .contact {
   position: relative;
   min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background-image:
     linear-gradient(rgba(20, 23, 28, 0.88), rgba(20, 23, 28, 0.9)),
     url('/images/Picture1.jpg');
@@ -245,20 +186,17 @@ onMounted(() => {
 
 .contact__layout {
   width: 100%;
-  max-width: 1180px;
-  margin: 0 auto;
+  max-width: 1080px;
   display: grid;
-  grid-template-columns: 380px 1fr;
+  grid-template-columns: 1fr 440px;
   gap: 64px;
-  align-items: start;
+  align-items: center;
 }
 
 /* ---------- Intro panel (left) ---------- */
 .contact__intro {
   color: var(--bone);
   padding-right: 12px;
-  position: sticky;
-  top: 130px;
 }
 
 .contact__mark {
@@ -281,10 +219,11 @@ onMounted(() => {
 .contact__intro-title {
   font-family: var(--font-display);
   font-weight: 500;
-  font-size: clamp(26px, 2.6vw, 36px);
+  font-size: clamp(28px, 3.2vw, 42px);
   line-height: 1.25;
   color: var(--bone);
   margin: 0 0 18px;
+  max-width: 480px;
 }
 
 .contact__intro-sub {
@@ -292,6 +231,7 @@ onMounted(() => {
   line-height: 1.7;
   color: var(--bone-dim);
   margin: 0 0 32px;
+  max-width: 440px;
 }
 
 .contact__benefits {
@@ -301,6 +241,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 18px;
+  max-width: 440px;
 }
 
 .contact__benefits li {
@@ -327,25 +268,19 @@ onMounted(() => {
   margin-top: 1px;
 }
 
-/* ---------- Main column (right) ---------- */
-.contact__main {
-  display: flex;
-  flex-direction: column;
-  gap: 40px;
-}
-
+/* ---------- Message card (right) ---------- */
 .contact__card {
   width: 100%;
   background: var(--slate);
   border: 1px solid rgba(169, 129, 75, 0.2);
   border-radius: 6px;
-  padding: 36px 36px 40px;
+  padding: 40px 36px 44px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
 }
 
 .contact__header {
   text-align: left;
-  margin-bottom: 24px;
+  margin-bottom: 28px;
 }
 
 .contact__eyebrow {
@@ -364,7 +299,7 @@ onMounted(() => {
 .contact__title {
   font-family: var(--font-display);
   font-weight: 500;
-  font-size: 24px;
+  font-size: 26px;
   color: var(--bone);
   margin: 0 0 10px;
 }
@@ -400,8 +335,7 @@ onMounted(() => {
   color: var(--bone-dim);
 }
 
-.field textarea,
-.thread-card__reply textarea {
+.field textarea {
   width: 100%;
   background: var(--ink);
   border: 1px solid rgba(237, 231, 218, 0.15);
@@ -411,19 +345,14 @@ onMounted(() => {
   font-size: 14px;
   padding: 12px 14px;
   resize: vertical;
+  min-height: 160px;
 }
 
-.field textarea {
-  min-height: 120px;
-}
-
-.field textarea::placeholder,
-.thread-card__reply textarea::placeholder {
+.field textarea::placeholder {
   color: rgba(237, 231, 218, 0.3);
 }
 
-.field textarea:focus,
-.thread-card__reply textarea:focus {
+.field textarea:focus {
   outline: none;
   border-color: var(--brass);
 }
@@ -457,194 +386,146 @@ onMounted(() => {
   cursor: not-allowed;
 }
 
-/* ---------- Conversations ---------- */
-.contact__threads-head {
-  margin-bottom: 18px;
-}
-
-.contact__threads-title {
-  font-family: var(--font-display);
-  font-weight: 500;
-  font-size: 22px;
-  color: var(--bone);
-  margin: 0;
-}
-
-.contact__status-text {
+/* ---------- Your messages (threads) ---------- */
+.contact__thread-status {
   font-size: 13px;
   color: var(--bone-dim);
-  margin: 0 0 16px;
+  margin-bottom: 20px;
 }
 
-.contact__status-text--error {
-  color: #d98b6a;
-}
-
-.contact__empty {
-  background: var(--slate);
-  border: 1px solid rgba(169, 129, 75, 0.15);
-  border-radius: 6px;
-  padding: 32px;
-  text-align: center;
-  color: var(--bone-dim);
-  font-size: 14px;
-}
-
-.contact__thread-list {
+.contact__threads {
+  margin-bottom: 28px;
+  max-height: 320px;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 14px;
+  padding-right: 4px;
 }
 
-.thread-card {
-  background: var(--slate);
-  border: 1px solid rgba(169, 129, 75, 0.2);
-  border-radius: 6px;
-  padding: 24px 26px 26px;
+.contact__threads-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brass-bright);
+  margin: 0 0 4px;
 }
 
-.thread-card__head {
+.contact__thread {
+  background: rgba(237, 231, 218, 0.04);
+  border: 1px solid rgba(237, 231, 218, 0.1);
+  border-radius: 5px;
+  padding: 14px 16px;
+}
+
+.contact__thread-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
-.thread-card__date {
-  font-family: var(--font-mono);
+.contact__thread-date {
   font-size: 11px;
   color: var(--bone-dim);
 }
 
-.status-pill {
+.contact__thread-message {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--bone);
+  margin: 0;
+}
+
+.contact__thread-replies {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(237, 231, 218, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.contact__thread-reply {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--bone-dim);
+}
+
+.contact__thread-reply--admin {
+  padding-left: 10px;
+  border-left: 2px solid rgba(209, 178, 127, 0.4);
+  color: var(--bone);
+}
+
+.contact__thread-reply-label {
+  display: block;
   font-family: var(--font-mono);
   font-size: 10px;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  padding: 4px 10px;
+  color: var(--brass-bright);
+  margin-bottom: 3px;
+}
+
+.contact__sent-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--pine-bright);
+}
+
+.status-pill {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 3px 9px;
   border-radius: 999px;
-  border: 1px solid rgba(237, 231, 218, 0.2);
-  color: var(--bone-dim);
 }
 
 .status-pill--new {
-  color: var(--brass-bright);
-  border-color: rgba(169, 129, 75, 0.5);
+  color: var(--sky);
+  background: rgba(123, 183, 214, 0.14);
 }
 
 .status-pill--read {
-  color: var(--bone);
+  color: var(--bone-dim);
+  background: rgba(237, 231, 218, 0.08);
+}
+
+.status-pill--replied {
+  color: var(--sky);
+  background: rgba(123, 183, 214, 0.14);
 }
 
 .status-pill--resolved {
-  color: #7fae8e;
-  border-color: rgba(127, 174, 142, 0.4);
-}
-
-.thread-card__bubbles {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.bubble {
-  max-width: 82%;
-  padding: 12px 16px;
-  border-radius: 6px;
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.bubble--user {
-  align-self: flex-start;
-  background: var(--ink);
-  border: 1px solid rgba(237, 231, 218, 0.1);
-  color: var(--bone);
-}
-
-.bubble--admin {
-  align-self: flex-end;
-  background: rgba(169, 129, 75, 0.14);
-  border: 1px solid rgba(169, 129, 75, 0.35);
-  color: var(--bone);
-}
-
-.bubble__author {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--brass-bright);
-  margin: 0 0 6px;
-}
-
-.bubble__body {
-  margin: 0;
-  white-space: pre-wrap;
-}
-
-.bubble__date {
-  margin: 6px 0 0;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--bone-dim);
-}
-
-.thread-card__reply {
-  display: flex;
-  gap: 10px;
-  align-items: flex-end;
-}
-
-.thread-card__reply textarea {
-  flex: 1;
-  min-height: 44px;
-}
-
-.thread-card__reply button {
-  flex-shrink: 0;
-  background: var(--brass);
-  color: var(--ink);
-  border: none;
-  border-radius: 4px;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 12px 18px;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-
-.thread-card__reply button:hover:not(:disabled) {
-  background: var(--brass-bright);
-}
-
-.thread-card__reply button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+  color: var(--pine-bright);
+  background: rgba(126, 162, 127, 0.14);
 }
 
 @media (max-width: 980px) {
   .contact__layout {
     grid-template-columns: 1fr;
     gap: 40px;
-    max-width: 620px;
-    margin: 0 auto;
+    max-width: 560px;
   }
 
   .contact__intro {
     padding-right: 0;
     text-align: center;
-    position: static;
   }
 
   .contact__mark { margin-left: auto; margin-right: auto; }
+  .contact__intro-title,
+  .contact__intro-sub { max-width: none; }
+  .contact__benefits { max-width: none; }
   .contact__benefits li { text-align: left; }
 }
 
 @media (max-width: 720px) {
-  .contact__card { padding: 28px 22px 32px; }
-  .thread-card { padding: 20px 18px 22px; }
-  .bubble { max-width: 100%; }
+  .contact__card { padding: 32px 24px 36px; }
 }
 </style>
