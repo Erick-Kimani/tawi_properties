@@ -28,10 +28,11 @@
         </div>
         <div class="rent-toolbar__type">
           <PropertyTypeDropdown
-            model-value="Rentals"
+            v-model="selectedType"
             label="Type"
             input-id="rentpage-type"
-            disabled
+            include-all-option
+            all-option-label="All"
           />
         </div>
         <span class="rent-toolbar__count">
@@ -86,7 +87,7 @@
   </div>
 </template>
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import LocationDropdown from '../components/LocationDropdown.vue'
 import PropertyTypeDropdown from '../components/PropertyTypeDropdown.vue'
 import propertySubmissionService from '@/services/propertySubmissionService'
@@ -94,15 +95,23 @@ import propertySubmissionService from '@/services/propertySubmissionService'
 const fallbackImage = '/images/Picture6.jpg'
 
 const query = ref('')
+// '' = All categories. This filters by property `type` (e.g. "Apartments"),
+// independent of listing_type: 'rent' below, which is what makes this the
+// Rent page rather than the Buy page.
+const selectedType = ref('')
 
 const allSubmissions = ref([])
 
-onMounted(async () => {
+async function loadListings() {
   try {
-    const { data } = await propertySubmissionService.getFeatured('Rentals')
+    const { data } = await propertySubmissionService.getFeatured({
+      listing_type: 'rent',
+      type: selectedType.value || undefined
+    })
     allSubmissions.value = data.map((s) => ({
       id: s.id,
       type: s.type,
+      listingType: s.listing_type,
       fullName: s.full_name,
       email: s.email,
       priceRange: s.price_range,
@@ -113,12 +122,17 @@ onMounted(async () => {
     // Leave allSubmissions empty — the existing "no matching rentals"
     // empty state in the template already covers this case.
   }
-})
+}
+
+onMounted(loadListings)
+watch(selectedType, loadListings)
 
 const listings = computed(() => {
   const q = query.value.trim().toLowerCase()
 
   return allSubmissions.value.filter((s) => {
+    // Defensive re-check, mirrors Buypage.vue.
+    if (s.listingType !== 'rent') return false
     if (q && !s.location.toLowerCase().includes(q)) return false
     return true
   })

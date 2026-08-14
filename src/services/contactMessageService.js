@@ -8,6 +8,20 @@ export const contactMessageService = {
     return apiClient.post('/contact-messages', { message })
   },
 
+  // The signed-in user's own threads, each with its full reply history —
+  // powers the Contact page's "your conversations" view.
+  getMine() {
+    return apiClient.get('/contact-messages/mine')
+  },
+
+  // Post a reply on a thread. Works for both the owning user (continuing
+  // their own conversation) and an admin (replying from the inbox) — the
+  // backend decides is_admin from who's authenticated, not from anything
+  // the client sends.
+  addReply(id, body) {
+    return apiClient.post(`/contact-messages/${id}/replies`, { body })
+  },
+
   // Admin only — the shared inbox.
   getAll(params) {
     return apiClient.get('/contact-messages', { params })

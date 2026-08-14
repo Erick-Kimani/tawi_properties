@@ -45,6 +45,35 @@
 
         <form v-if="!submitted" class="list-property__form" @submit.prevent="handleSubmit">
         <div class="field">
+          <label id="intent-label">I want to</label>
+          <div class="intent-toggle" role="radiogroup" aria-labelledby="intent-label">
+            <button
+              type="button"
+              class="intent-toggle__option"
+              :class="{ 'intent-toggle__option--active': form.intent === 'sale' }"
+              role="radio"
+              :aria-checked="form.intent === 'sale'"
+              @click="form.intent = 'sale'"
+            >
+              Sell
+            </button>
+            <button
+              type="button"
+              class="intent-toggle__option"
+              :class="{ 'intent-toggle__option--active': form.intent === 'rent' }"
+              role="radio"
+              :aria-checked="form.intent === 'rent'"
+              @click="form.intent = 'rent'"
+            >
+              Rent out
+            </button>
+          </div>
+          <p class="field__hint">
+            This determines whether your listing appears on the Buy or Rent page.
+          </p>
+        </div>
+
+        <div class="field">
           <label for="type">Property type</label>
           <select id="type" v-model="form.type" required :disabled="propertyTypesLoading">
             <option v-for="t in propertyTypes" :key="t" :value="t">{{ t }}</option>
@@ -202,6 +231,13 @@ const {
 
 function blankForm() {
   return {
+    // Seller's intent — distinct from `type` (the property category, e.g.
+    // "Apartments", "Land/Plot"). This is what routes the listing onto the
+    // Buy page ('sale') vs the Rent page ('rent') once featured. Kept as
+    // its own field/column (`listing_type`) rather than folded into the
+    // category list, since it answers a different question (what the
+    // seller wants to do) than `type` does (what kind of property it is).
+    intent: 'sale',
     type: propertyTypes.value[0] || '',
     fullName: '',
     email: '',
@@ -300,7 +336,8 @@ async function handleSubmit() {
 
   try {
     const payload = new FormData()
-    payload.append('type', form.type)
+    payload.append('listing_type', form.intent) // 'sale' | 'rent' — seller's intent
+    payload.append('type', form.type) // property category, e.g. "Apartments"
     payload.append('full_name', form.fullName)
     payload.append('email', form.email)
     payload.append('phone', form.phone)
@@ -556,6 +593,43 @@ function resetForm() {
   text-transform: none;
   letter-spacing: normal;
   opacity: 0.7;
+}
+
+.field__hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--bone-dim);
+  opacity: 0.8;
+}
+
+.intent-toggle {
+  display: flex;
+  gap: 8px;
+}
+
+.intent-toggle__option {
+  flex: 1;
+  background: var(--ink);
+  border: 1px solid rgba(237, 231, 218, 0.15);
+  border-radius: 4px;
+  color: var(--bone-dim);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.intent-toggle__option:hover {
+  border-color: rgba(169, 129, 75, 0.5);
+  color: var(--bone);
+}
+
+.intent-toggle__option--active {
+  background: var(--brass);
+  border-color: var(--brass);
+  color: var(--ink);
 }
 
 .field input,

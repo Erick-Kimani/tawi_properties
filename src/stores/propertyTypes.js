@@ -10,7 +10,12 @@ import propertyTypeService from '@/services/propertyTypeService'
 
 // Used only until the API call resolves, or if it fails outright, so every
 // dropdown still has sensible options instead of rendering empty.
-const FALLBACK_PROPERTY_TYPES = ['Land/Plot', 'Rent', 'Commercial Buildings', 'Apartments']
+//
+// NOTE: these are property *categories* only (what kind of property it is).
+// Whether a listing is for sale or for rent is a separate field —
+// `listing_type` — set via the "I want to" toggle on Listaproperty.vue, not
+// a category here. Don't add "Rent"/"Rentals" back into this list.
+const FALLBACK_PROPERTY_TYPES = ['Land/Plot', 'Houses', 'Commercial Buildings', 'Apartments']
 
 const state = reactive({
   types: [...FALLBACK_PROPERTY_TYPES],

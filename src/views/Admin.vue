@@ -48,6 +48,23 @@
             {{ f }}
           </button>
         </div>
+
+        <!-- Separate axis from status above: this filters by the seller's
+             listing_type (sale/rent), not by review status. Kept as its own
+             pill group rather than merged into `filters` so the two
+             questions ("is it reviewed?" vs "sale or rent?") stay distinct
+             and can be combined freely. -->
+        <div class="admin__filters">
+          <button
+            v-for="lf in listingFilters"
+            :key="lf"
+            class="filter-pill"
+            :class="{ 'filter-pill--active': activeListingFilter === lf }"
+            @click="activeListingFilter = lf"
+          >
+            {{ lf }}
+          </button>
+        </div>
       </div>
 
     <p v-if="loading" class="admin__status-text">Loading submissions…</p>
@@ -57,6 +74,7 @@
       <table>
         <thead>
           <tr>
+            <th>Listing</th>
             <th>Type</th>
             <th>Submitted by</th>
             <th>Contact</th>
@@ -69,6 +87,14 @@
         </thead>
         <tbody>
           <tr v-for="row in filteredRows" :key="row.id" :data-row-id="row.id">
+            <td>
+              <span
+                class="badge badge--listing"
+                :class="row.listingType === 'rent' ? 'badge--listing-rent' : 'badge--listing-sale'"
+              >
+                {{ row.listingType === 'rent' ? 'Rent' : 'Sell' }}
+              </span>
+            </td>
             <td>
               <span class="badge" :class="'badge--' + row.type.toLowerCase()">{{ row.type }}</span>
             </td>
@@ -196,7 +222,13 @@
                   <span class="contact__phone">{{ msg.senderEmail }}</span>
                 </div>
               </td>
-              <td class="admin__message-text">{{ msg.message }}</td>
+              <td class="admin__message-text">
+                {{ msg.message }}
+                <p v-if="msg.adminReply" class="admin__message-reply">
+                  <span class="admin__message-reply-label">Your reply:</span>
+                  {{ msg.adminReply }}
+                </p>
+              </td>
               <td>
                 <span class="status-pill" :class="'status-pill--' + msg.status">
                   {{ msg.status }}
@@ -210,6 +242,9 @@
                   @click="handleMarkRead(msg.id)"
                 >
                   Mark read
+                </button>
+                <button class="action action--feature" @click="openReplyModal(msg)">
+                  {{ msg.adminReply ? 'Reply again' : 'Reply' }}
                 </button>
                 <button
                   v-if="msg.status !== 'resolved'"
@@ -232,6 +267,35 @@
         <p>No messages match this filter yet.</p>
       </div>
     </section>
+
+    <!-- Reply modal — sends the reply server-side via ContactMessageController@reply,
+         which emails replyTargetMessage's sender directly. Not tied to any
+         particular row in the DOM, so it works regardless of table scroll
+         position/filtering. -->
+    <div v-if="replyTarget" class="reply-modal__backdrop" @click.self="closeReplyModal">
+      <div class="reply-modal" role="dialog" aria-modal="true" aria-labelledby="reply-modal-title">
+        <h3 id="reply-modal-title">Reply to {{ replyTarget.senderName }}</h3>
+        <p class="reply-modal__original">{{ replyTarget.message }}</p>
+
+        <textarea
+          v-model="replyText"
+          rows="5"
+          placeholder="Type your reply…"
+          :disabled="replySending"
+        ></textarea>
+
+        <p v-if="replyError" class="field__error">{{ replyError }}</p>
+
+        <div class="reply-modal__actions">
+          <button type="button" class="btn btn--ghost" @click="closeReplyModal" :disabled="replySending">
+            Cancel
+          </button>
+          <button type="button" class="btn btn--primary" @click="submitReply" :disabled="replySending">
+            {{ replySending ? 'Sending…' : 'Send reply' }}
+          </button>
+        </div>
+      </div>
+    </div>
 
     <section class="admin__counties" ref="countiesRef">
       <div class="admin__counties-head">
@@ -357,6 +421,7 @@ function mapSubmission(s) {
   return {
     id: s.id,
     type: s.type,
+    listingType: s.listing_type, // 'sale' | 'rent' — seller's intent, distinct from `type`
     fullName: s.full_name,
     email: s.email,
     phone: s.phone,
@@ -479,6 +544,12 @@ async function handleReject(id) {
 
 const filters = ['All', 'Featured', 'Pending', 'Rejected']
 const activeFilter = ref('All')
+
+// Listing-type filter — orthogonal to the status filter above (see the
+// comment in the template). 'All' means don't filter by it at all.
+const listingFilters = ['All', 'Sell', 'Rent']
+const activeListingFilter = ref('All')
+
 const searchQuery = ref('')
 
 const filteredRows = computed(() => {
@@ -492,6 +563,12 @@ const filteredRows = computed(() => {
     result = result.filter((r) => r.status === 'rejected')
   }
 
+  if (activeListingFilter.value === 'Sell') {
+    result = result.filter((r) => r.listingType === 'sale')
+  } else if (activeListingFilter.value === 'Rent') {
+    result = result.filter((r) => r.listingType === 'rent')
+  }
+
   const query = searchQuery.value.trim().toLowerCase()
   if (!query) return result
 
@@ -502,6 +579,7 @@ const filteredRows = computed(() => {
       row.phone,
       row.location,
       row.type,
+      row.listingType === 'rent' ? 'rent' : 'sell',
       row.priceRange,
       row.status
     ]
@@ -528,6 +606,7 @@ function mapMessage(m) {
     senderName: m.sender?.name || 'Unknown',
     senderEmail: m.sender?.email || '',
     message: m.message,
+    adminReply: m.admin_reply || '',
     status: m.status,
     createdAt: m.created_at ? m.created_at.slice(0, 10) : ''
   }
@@ -570,7 +649,59 @@ async function handleResolve(id) {
   }
 }
 
-const messageFilters = ['All', 'New', 'Read', 'Resolved']
+// --- Reply modal ---------------------------------------------------------
+// replyTarget holds the *mapped* message object (not just an id) so the
+// modal can show the sender's name/original text without re-finding it.
+const replyTarget = ref(null)
+const replyText = ref('')
+const replySending = ref(false)
+const replyError = ref('')
+
+function openReplyModal(msg) {
+  replyTarget.value = msg
+  replyText.value = ''
+  replyError.value = ''
+}
+
+function closeReplyModal() {
+  if (replySending.value) return // don't let a backdrop click cancel mid-send
+  replyTarget.value = null
+  replyText.value = ''
+  replyError.value = ''
+}
+
+async function submitReply() {
+  if (!replyTarget.value) return
+
+  const text = replyText.value.trim()
+  if (text.length < 2) {
+    replyError.value = 'Please write a reply before sending.'
+    return
+  }
+
+  replySending.value = true
+  replyError.value = ''
+
+  try {
+    await contactMessageService.reply(replyTarget.value.id, text)
+
+    const msg = messages.value.find((m) => m.id === replyTarget.value.id)
+    if (msg) {
+      msg.adminReply = text
+      if (msg.status !== 'resolved') msg.status = 'replied'
+    }
+
+    replyTarget.value = null
+    replyText.value = ''
+  } catch (e) {
+    replyError.value = e.response?.data?.message
+      || 'Could not send this reply. Please try again.'
+  } finally {
+    replySending.value = false
+  }
+}
+
+const messageFilters = ['All', 'New', 'Read', 'Replied', 'Resolved']
 const activeMessageFilter = ref('All')
 const messageSearchQuery = ref('')
 
@@ -585,7 +716,7 @@ const filteredMessages = computed(() => {
   if (!query) return result
 
   return result.filter((m) => {
-    const haystack = [m.senderName, m.senderEmail, m.message, m.status]
+    const haystack = [m.senderName, m.senderEmail, m.message, m.adminReply, m.status]
       .filter(Boolean)
       .join(' ')
       .toLowerCase()
@@ -1014,6 +1145,25 @@ tbody tr:hover { background: rgba(237, 231, 218, 0.03); }
   background: rgba(123, 183, 214, 0.1);
 }
 
+/* Listing badge (sale vs rent) — deliberately styled apart from the
+   property-type badges above so the two axes never look like the same
+   kind of thing at a glance. */
+.badge--listing {
+  font-weight: 600;
+}
+
+.badge--listing-sale {
+  color: var(--brass-bright);
+  border-color: rgba(209, 178, 127, 0.45);
+  background: rgba(209, 178, 127, 0.12);
+}
+
+.badge--listing-rent {
+  color: var(--pine-bright);
+  border-color: rgba(126, 162, 127, 0.45);
+  background: rgba(126, 162, 127, 0.12);
+}
+
 /* Status pill */
 .status-pill {
   display: inline-block;
@@ -1050,10 +1200,145 @@ tbody tr:hover { background: rgba(237, 231, 218, 0.03); }
   background: rgba(237, 231, 218, 0.08);
 }
 
+.status-pill--replied {
+  color: var(--sky);
+  background: rgba(123, 183, 214, 0.14);
+}
+
+.status-pill--resolved {
+  color: var(--pine-bright);
+  background: rgba(126, 162, 127, 0.14);
+}
+
 .admin__message-text {
   max-width: 360px;
   white-space: normal;
   line-height: 1.5;
+}
+
+.admin__message-reply {
+  margin: 8px 0 0;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(237, 231, 218, 0.15);
+  font-size: 13px;
+  color: var(--bone-dim);
+}
+
+.admin__message-reply-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--brass-bright);
+  margin-bottom: 4px;
+}
+
+/* ---------- Reply modal ---------- */
+.reply-modal__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(15, 19, 24, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.reply-modal {
+  width: 100%;
+  max-width: 480px;
+  background: var(--slate);
+  border: 1px solid rgba(169, 129, 75, 0.3);
+  border-radius: 6px;
+  padding: 28px 26px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+
+.reply-modal h3 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 19px;
+  color: var(--bone);
+  margin: 0 0 12px;
+}
+
+.reply-modal__original {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--bone-dim);
+  background: rgba(237, 231, 218, 0.05);
+  border: 1px solid rgba(237, 231, 218, 0.1);
+  border-radius: 4px;
+  padding: 10px 12px;
+  margin: 0 0 18px;
+  max-height: 100px;
+  overflow-y: auto;
+}
+
+.reply-modal textarea {
+  width: 100%;
+  background: var(--ink);
+  border: 1px solid rgba(237, 231, 218, 0.15);
+  border-radius: 4px;
+  color: var(--bone);
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 12px 14px;
+  resize: vertical;
+}
+
+.reply-modal textarea:focus {
+  outline: none;
+  border-color: var(--brass);
+}
+
+.reply-modal textarea:disabled {
+  opacity: 0.6;
+}
+
+.reply-modal .field__error {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: #d98b6a;
+}
+
+.reply-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.reply-modal .btn {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  border-radius: 4px;
+  padding: 10px 20px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.reply-modal .btn--primary {
+  background: var(--brass);
+  color: var(--ink);
+}
+.reply-modal .btn--primary:hover:not(:disabled) { background: var(--brass-bright); }
+
+.reply-modal .btn--ghost {
+  background: transparent;
+  border-color: rgba(237, 231, 218, 0.2);
+  color: var(--bone-dim);
+}
+.reply-modal .btn--ghost:hover:not(:disabled) { color: var(--bone); border-color: var(--brass); }
+
+.reply-modal .btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .admin__messages {

@@ -12,8 +12,18 @@ export const propertySubmissionService = {
 
   // PUBLIC — no auth required. Powers Buypage.vue / Rentpage.vue.
   // Only ever returns status === 'featured' submissions.
-  getFeatured(type) {
-    return apiClient.get('/property-listings', { params: type ? { type } : {} })
+  //
+  // filters:
+  //   - listing_type: 'sale' | 'rent' — the seller's intent, set on submit.
+  //     Buypage always passes 'sale', Rentpage always passes 'rent'. This is
+  //     what separates the two pages; it is NOT the same thing as `type`.
+  //   - type: property category (e.g. "Apartments", "Land/Plot") — optional,
+  //     used for the in-page category dropdown on both Buy and Rent.
+  getFeatured(filters = {}) {
+    const params = {}
+    if (filters.listing_type) params.listing_type = filters.listing_type
+    if (filters.type) params.type = filters.type
+    return apiClient.get('/property-listings', { params })
   },
 
   // Admin only

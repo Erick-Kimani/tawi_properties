@@ -34,7 +34,6 @@
             input-id="buypage-type"
             include-all-option
             all-option-label="All"
-            :exclude-types="['Rentals']"
           />
         </div>
       </div>
@@ -76,7 +75,7 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import LocationDropdown from '../components/LocationDropdown.vue'
 import PropertyTypeDropdown from '../components/PropertyTypeDropdown.vue'
 import propertySubmissionService from '@/services/propertySubmissionService'
@@ -84,20 +83,27 @@ import propertySubmissionService from '@/services/propertySubmissionService'
 const fallbackImage = '/images/Picture2.jpg'
 
 const query = ref('')
-// '' = All types. The Buy page only ever shows "for sale" listings, so
-// Rentals is excluded from the dropdown entirely (see :exclude-types above).
+// '' = All categories. This filters by property `type` (category) only —
+// which listings are for sale at all is decided by `listing_type` below,
+// not by anything in this dropdown.
 const selectedType = ref('')
 
 const allSubmissions = ref([])
 
-onMounted(async () => {
+async function loadListings() {
   try {
-    const { data } = await propertySubmissionService.getFeatured()
-    // API already only returns status === 'featured'; map field names to
-    // what the template expects (fullName, priceRange, photo).
+    // listing_type: 'sale' is what makes this the Buy page rather than
+    // the Rent page — see propertySubmissionService.getFeatured.
+    const { data } = await propertySubmissionService.getFeatured({
+      listing_type: 'sale',
+      type: selectedType.value || undefined
+    })
+    // API already only returns status === 'featured', listing_type ===
+    // 'sale' submissions; map field names to what the template expects.
     allSubmissions.value = data.map((s) => ({
       id: s.id,
       type: s.type,
+      listingType: s.listing_type,
       fullName: s.full_name,
       email: s.email,
       priceRange: s.price_range,
@@ -108,14 +114,19 @@ onMounted(async () => {
     // Leave allSubmissions empty — the existing "no listings" empty
     // state in the template already covers this case.
   }
-})
+}
+
+onMounted(loadListings)
+watch(selectedType, loadListings)
 
 const listings = computed(() => {
   const q = query.value.trim().toLowerCase()
 
   return allSubmissions.value.filter((s) => {
-    if (s.type === 'Rentals') return false
-    if (selectedType.value && s.type !== selectedType.value) return false
+    // Defensive re-check client-side in case the API ever returns a wider
+    // set than requested — 'sale' is the one non-negotiable rule for this
+    // page, so it's enforced here as well as via the request params.
+    if (s.listingType !== 'sale') return false
     if (q && !s.location.toLowerCase().includes(q)) return false
     return true
   })
