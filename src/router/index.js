@@ -5,7 +5,7 @@ import SignUpView from '../views/Signup.vue'
 import Login from '../views/Login.vue'
 import Admin from '../views/Admin.vue'
 import Listaproperty from '../views/Listaproperty.vue'
-import PropertyMap from '../components/PropertyMap.vue'
+import PropertyMapPage from '../views/PropertyMapPage.vue'
 import CategoryListing from '../views/Categorylisting.vue'
 import BuyPage from '../views/Buypage.vue'
 import RentPage from '../views/Rentpage.vue'
@@ -41,19 +41,11 @@ const router = createRouter({
       component: Listaproperty,
     },
     {
+      // PropertyMapPage.vue decides picker vs. browse mode itself, based
+      // on whether ?returnTo is present — see that file for details.
       path: '/property-map',
       name: 'property-map',
-      component: PropertyMap,
-      props: (route) => {
-        const mapProps = { mode: 'picker' }
-        const lat = Number(route.query.lat)
-        const lng = Number(route.query.lng)
-        if (route.query.lat !== undefined && route.query.lng !== undefined && !Number.isNaN(lat) && !Number.isNaN(lng)) {
-          mapProps.center = [lng, lat]
-          mapProps.modelValue = { lat, lng }
-        }
-        return mapProps
-      },
+      component: PropertyMapPage,
     },
     {
       path: '/buy',

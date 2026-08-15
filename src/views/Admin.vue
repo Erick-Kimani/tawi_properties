@@ -457,12 +457,11 @@ async function loadRows() {
     // they arrive. We only need to handle the empty-state fade here.
     nextTick(() => {
       if (!filteredRows.value.length && emptyRef.value) {
-        animate({
-          targets: emptyRef.value,
+        animate(emptyRef.value, {
           opacity: [0, 1],
           translateY: [10, 0],
           duration: 320,
-          easing: 'easeOutQuad'
+          ease: 'outQuad'
         })
       }
     })
@@ -475,13 +474,12 @@ function animateRows() {
   const rowsInTable = tableRef.value.querySelectorAll('tbody tr')
   if (!rowsInTable.length) return
 
-  animate({
-    targets: rowsInTable,
+  animate(rowsInTable, {
     opacity: [0, 1],
     translateY: [16, 0],
     duration: 480,
     delay: (el, i) => i * 70,
-    easing: 'easeOutQuad'
+    ease: 'outQuad'
   })
 }
 
@@ -489,11 +487,10 @@ function animateStatusPulse(id) {
   const targetRow = tableRef.value?.querySelector(`[data-row-id="${id}"]`)
   if (!targetRow) return
 
-  animate({
-    targets: targetRow,
+  animate(targetRow, {
     scale: [1, 1.01, 1],
     duration: 420,
-    easing: 'easeOutQuad'
+    ease: 'outQuad'
   })
 }
 
@@ -537,12 +534,11 @@ async function handleReject(id) {
       if (filteredRows.value.length) {
         animateRows()
       } else if (emptyRef.value) {
-        animate({
-          targets: emptyRef.value,
+        animate(emptyRef.value, {
           opacity: [0, 1],
           translateY: [10, 0],
           duration: 320,
-          easing: 'easeOutQuad'
+          ease: 'outQuad'
         })
       }
     })
@@ -822,34 +818,31 @@ onMounted(() => {
 
   nextTick(() => {
     if (heroInnerRef.value) {
-      animate({
-        targets: heroInnerRef.value,
+      animate(heroInnerRef.value, {
         opacity: [0, 1],
         translateY: [20, 0],
         duration: 700,
-        easing: 'easeOutExpo'
+        ease: 'outExpo'
       })
     }
 
     if (statsRef.value) {
       const statCards = statsRef.value.querySelectorAll('.stat')
-      animate({
-        targets: statCards,
+      animate(statCards, {
         opacity: [0, 1],
         translateY: [16, 0],
         delay: (el, i) => i * 80,
         duration: 500,
-        easing: 'easeOutQuad'
+        ease: 'outQuad'
       })
     }
 
     if (toolbarRef.value) {
-      animate({
-        targets: toolbarRef.value,
+      animate(toolbarRef.value, {
         opacity: [0, 1],
         translateY: [12, 0],
         duration: 500,
-        easing: 'easeOutQuad'
+        ease: 'outQuad'
       })
     }
   })
@@ -868,13 +861,12 @@ watch(filteredMessages, () => {
     if (!messagesTableRef.value) return
     const rowsInTable = messagesTableRef.value.querySelectorAll('tbody tr')
     if (!rowsInTable.length) return
-    animate({
-      targets: rowsInTable,
+    animate(rowsInTable, {
       opacity: [0, 1],
       translateY: [16, 0],
       duration: 480,
       delay: (el, i) => i * 70,
-      easing: 'easeOutQuad'
+      ease: 'outQuad'
     })
   })
 }, { flush: 'post' })

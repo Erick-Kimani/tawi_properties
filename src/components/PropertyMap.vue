@@ -37,9 +37,38 @@
         >
           No matches for "{{ searchQuery }}"
         </p>
+
+        <div v-if="$slots.filters" class="property-map__filters">
+          <slot name="filters" />
+        </div>
       </div>
 
       <div ref="mapEl" class="property-map__canvas" :style="isFullPage ? {} : { height }"></div>
+
+      <div
+        v-if="mode === 'display' && legend"
+        class="property-map__legend"
+        :class="{ 'property-map__legend--full': isFullPage }"
+      >
+        <button
+          v-for="entry in pinLegend"
+          :key="entry.key"
+          type="button"
+          class="property-map__legend-item"
+          :class="{ 'property-map__legend-item--inactive': !activeCategories.has(entry.key) }"
+          @click="toggleCategory(entry.key)"
+        >
+          <span class="property-map__legend-dot" :style="{ background: entry.color }"></span>
+          {{ entry.label }}
+        </button>
+      </div>
+
+      <p
+        v-if="mode === 'display' && !props.markers.length"
+        class="property-map__hint property-map__hint--floating"
+      >
+        {{ emptyMessage }}
+      </p>
 
       <div v-if="mode === 'picker' && isFullPage" class="property-map__hint property-map__hint--floating">
         <span v-if="coords">
@@ -100,6 +129,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { Map as MapLibreMap, Marker, Popup, NavigationControl, LngLatBounds, setWorkerUrl } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
+import { PIN_LEGEND, DEFAULT_PIN_COLOR, resolvePinCategory, resolvePinColor } from '@/utils/propertyPinColors'
 
 // MapLibre v6 is ESM-only and parses vector tiles in a separate worker
 // module. Vite/webpack/esbuild can't auto-resolve that worker's URL, so it
@@ -156,6 +186,30 @@ const props = defineProps({
   navOffset: {
     type: [Number, String],
     default: null,
+  },
+  // Display mode only: show the Land/Apartments/Commercial/Rentals color
+  // key, with each entry clickable to toggle that category on/off. Purely
+  // client-side — it hides/shows already-loaded pins, it doesn't refetch.
+  legend: {
+    type: Boolean,
+    default: false,
+  },
+  // Display mode only: message shown when `markers` is empty.
+  emptyMessage: {
+    type: String,
+    default: 'No properties to show yet.',
+  },
+  // Display mode only: id of a single marker (matched against each
+  // marker item's `id`) to zoom straight to and auto-open, instead of
+  // fitting the view to every visible pin. Used by the Buy/Rent "View on
+  // map" links from the enquiry modal to jump to one specific property.
+  focusId: {
+    type: [String, Number],
+    default: null,
+  },
+  focusZoom: {
+    type: Number,
+    default: 16,
   },
 })
 
@@ -223,6 +277,20 @@ const searchResults = ref([])
 const searching = ref(false)
 const showResults = ref(false)
 const searchAttempted = ref(false)
+
+// --- Color-coded legend (display mode) --------------------------------
+const pinLegend = PIN_LEGEND
+// All four categories start active; clicking a legend entry hides/shows
+// just that category's pins without refetching anything.
+const activeCategories = ref(new Set(pinLegend.map((entry) => entry.key)))
+
+function toggleCategory(key) {
+  const next = new Set(activeCategories.value)
+  if (next.has(key)) next.delete(key)
+  else next.add(key)
+  activeCategories.value = next
+  if (map && map.isStyleLoaded()) renderDisplayMarkers()
+}
 
 let map = null
 let pickerMarker = null
@@ -472,19 +540,42 @@ function renderDisplayMarkers() {
   clearDisplayMarkers()
   if (!map || !props.markers.length) return
 
-  const bounds = new LngLatBounds()
+  // Legend toggles only hide/show the four categorized buckets — anything
+  // that falls outside all four (resolvePinCategory returns null) always
+  // shows, since there's no legend entry a person could use to hide it.
+  const visibleItems = props.markers.filter((item) => {
+    const category = resolvePinCategory(item)
+    return category === null || activeCategories.value.has(category)
+  })
+  if (!visibleItems.length) return
 
-  props.markers.forEach((item) => {
+  const bounds = new LngLatBounds()
+  let focusMarker = null
+
+  visibleItems.forEach((item) => {
     if (typeof item.lat !== 'number' || typeof item.lng !== 'number') return
+
+    const color = resolvePinColor(item)
+    const category = resolvePinCategory(item)
+    const categoryLabel = pinLegend.find((entry) => entry.key === category)?.label || item.type || 'Property'
+    const destination = String(item.listingType || item.listing_type || '').toLowerCase() === 'rent' ? '/rent' : '/buy'
 
     const el = document.createElement('div')
     el.className = 'property-map__pin'
+    el.style.setProperty('--pin-color', color)
 
     const popupHtml = `
       <div class="property-map__popup">
-        <strong>${escapeHtml(item.title || 'Property')}</strong>
+        <div class="property-map__popup-category">
+          <span class="property-map__popup-dot" style="background:${color}"></span>
+          ${escapeHtml(categoryLabel)}
+        </div>
+        <strong>${escapeHtml(item.title || item.type || 'Property')}</strong>
         ${item.subtitle ? `<div class="property-map__popup-sub">${escapeHtml(item.subtitle)}</div>` : ''}
         ${item.price ? `<div class="property-map__popup-price">${escapeHtml(item.price)}</div>` : ''}
+        <a class="property-map__popup-link" href="${destination}">
+          View on ${destination === '/rent' ? 'Rent' : 'Buy'} page →
+        </a>
       </div>
     `
 
@@ -497,11 +588,20 @@ function renderDisplayMarkers() {
 
     displayMarkers.push(marker)
     bounds.extend([item.lng, item.lat])
+
+    // Loose equality: focusId may arrive as a route-query string ("42")
+    // while item.id is typically a number — both should match.
+    if (props.focusId !== null && props.focusId !== undefined && String(item.id) === String(props.focusId)) {
+      focusMarker = marker
+    }
   })
 
-  if (props.markers.length === 1) {
+  if (focusMarker) {
+    map.jumpTo({ center: focusMarker.getLngLat(), zoom: props.focusZoom })
+    focusMarker.togglePopup()
+  } else if (visibleItems.length === 1) {
     map.jumpTo({ center: bounds.getCenter(), zoom: props.zoom })
-  } else if (props.markers.length > 1) {
+  } else if (visibleItems.length > 1) {
     map.fitBounds(bounds, { padding: 56, maxZoom: 15, duration: 0 })
   }
 }
@@ -624,7 +724,11 @@ onBeforeUnmount(() => {
   height: 26px;
   border-radius: 50% 50% 50% 0;
   transform: rotate(-45deg);
-  background: var(--brass, #a9814b);
+  /* --pin-color is set per-marker in JS (see resolvePinColor) for
+     display-mode pins: green = Land, blue = Apartments, purple =
+     Commercial, red = Rentals. Falls back to the brass "general" color
+     used by the picker pin when no category matches. */
+  background: var(--pin-color, var(--brass, #a9814b));
   border: 2px solid var(--ink, #14171c);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
   cursor: pointer;
@@ -641,7 +745,7 @@ onBeforeUnmount(() => {
   height: 0;
   border-left: 6px solid transparent;
   border-right: 6px solid transparent;
-  border-top: 8px solid var(--brass, #a9814b);
+  border-top: 8px solid var(--pin-color, var(--brass, #a9814b));
 }
 
 .property-map__pin--picker {
@@ -660,6 +764,25 @@ onBeforeUnmount(() => {
   min-width: 140px;
 }
 
+.property-map__popup-category {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.7;
+  margin-bottom: 4px;
+}
+
+.property-map__popup-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
 .property-map__popup strong {
   display: block;
   margin-bottom: 2px;
@@ -674,6 +797,19 @@ onBeforeUnmount(() => {
   margin-top: 4px;
   font-weight: 600;
   color: var(--brass, #a9814b);
+}
+
+.property-map__popup-link {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--brass, #a9814b);
+  text-decoration: none;
+}
+
+.property-map__popup-link:hover {
+  text-decoration: underline;
 }
 
 .maplibregl-popup-content {
@@ -734,6 +870,7 @@ onBeforeUnmount(() => {
 
 .property-map--full .property-map__toolbar {
   top: 72px;
+  max-width: 560px;
 }
 
 .property-map--full .property-map__canvas {
@@ -853,6 +990,65 @@ onBeforeUnmount(() => {
   font-family: var(--font-mono, monospace);
   font-size: 12px;
   color: var(--bone-dim, #cfc8b6);
+}
+
+/* Extra controls a parent page injects via the "filters" slot (e.g.
+   Buy/Rent + property-type dropdowns on the browse map). Sits inside the
+   same floating toolbar panel as the search bar, right below it. */
+.property-map__filters {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Color key for the four categories, display mode only. Each entry is a
+   toggle — clicking it hides/shows that category's pins client-side. */
+.property-map__legend {
+  position: absolute;
+  top: 24px;
+  right: 16px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: rgba(27, 30, 37, 0.94);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(169, 129, 75, 0.35);
+  border-radius: 12px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+}
+
+.property-map__legend--full {
+  top: 72px;
+}
+
+.property-map__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 2px 2px;
+  font-family: var(--font-body, sans-serif);
+  font-size: 12.5px;
+  color: var(--bone, #eae5d8);
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.property-map__legend-item--inactive {
+  opacity: 0.35;
+}
+
+.property-map__legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3);
 }
 
 .property-map__canvas {

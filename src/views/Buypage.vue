@@ -36,6 +36,10 @@
             all-option-label="All"
           />
         </div>
+
+        <RouterLink class="buy-toolbar__map-link" to="/property-map?listing_type=sale">
+          View on map
+        </RouterLink>
       </div>
     </div>
 
@@ -53,7 +57,7 @@
             <p class="listing-card__price">{{ item.priceRange }}</p>
             <h3 class="listing-card__location">{{ item.location }}</h3>
             <p class="listing-card__owner">Listed by {{ item.fullName }}</p>
-            <a class="listing-card__cta" :href="`mailto:${item.email}`">Enquire</a>
+            <button type="button" class="listing-card__cta" @click="enquiryItem = item">Enquire</button>
           </div>
         </article>
       </div>
@@ -71,13 +75,17 @@
         </p>
       </div>
     </section>
+
+    <PropertyEnquiryModal :listing="enquiryItem" @close="enquiryItem = null" />
   </div>
 </template>
 
 <script setup>
 import { computed, ref, onMounted, watch } from 'vue'
+import { RouterLink } from 'vue-router'
 import LocationDropdown from '../components/LocationDropdown.vue'
 import PropertyTypeDropdown from '../components/PropertyTypeDropdown.vue'
+import PropertyEnquiryModal from '../components/PropertyEnquiryModal.vue'
 import propertySubmissionService from '@/services/propertySubmissionService'
 
 const fallbackImage = '/images/Picture2.jpg'
@@ -87,6 +95,9 @@ const query = ref('')
 // which listings are for sale at all is decided by `listing_type` below,
 // not by anything in this dropdown.
 const selectedType = ref('')
+
+// Currently-open "Enquire" listing, or null when the modal is closed.
+const enquiryItem = ref(null)
 
 const allSubmissions = ref([])
 
@@ -106,9 +117,13 @@ async function loadListings() {
       listingType: s.listing_type,
       fullName: s.full_name,
       email: s.email,
+      phone: s.phone,
+      description: s.description,
       priceRange: s.price_range,
       location: s.location,
-      photo: s.photo_url
+      photo: s.photo_url,
+      lat: s.latitude !== undefined && s.latitude !== null ? Number(s.latitude) : null,
+      lng: s.longitude !== undefined && s.longitude !== null ? Number(s.longitude) : null,
     }))
   } catch (e) {
     // Leave allSubmissions empty — the existing "no listings" empty
@@ -232,6 +247,25 @@ const listings = computed(() => {
 .buy-toolbar__search input::placeholder { color: rgba(237, 231, 218, 0.35); }
 .buy-toolbar__search input:focus { outline: none; }
 
+.buy-toolbar__map-link {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--brass-bright);
+  text-decoration: none;
+  border: 1px solid var(--brass);
+  border-radius: 999px;
+  padding: 8px 16px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.buy-toolbar__map-link:hover {
+  background: var(--brass);
+  color: var(--ink);
+}
+
 .buy-toolbar__type {
   flex: 0 1 220px;
   min-width: 160px;
@@ -343,12 +377,15 @@ const listings = computed(() => {
 
 .listing-card__cta {
   display: inline-block;
+  font-family: inherit;
   font-size: 13px;
   font-weight: 500;
   color: var(--ink);
   background: var(--brass);
+  border: none;
   padding: 9px 16px;
   text-decoration: none;
+  cursor: pointer;
   transition: background 0.2s ease;
 }
 
