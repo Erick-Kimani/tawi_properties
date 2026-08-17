@@ -12,8 +12,10 @@
   
   <!-- Add the v-if here -->
   <RouterLink v-if="authStore.user?.role?.slug === 'administrator'" to="/admin">Admin</RouterLink>
+   <RouterLink to="/property-map" @click="dropdownOpen = false">Map</RouterLink>
+      <RouterLink to="/contact" @click="dropdownOpen = false">Contact</RouterLink>
 
-  <div class="nav__dropdown" @mouseleave="dropdownOpen = false">
+  <!-- <div class="nav__dropdown" @mouseleave="dropdownOpen = false">
     <button
       class="nav__dropdown-trigger"
       :class="{ 'nav__dropdown-trigger--active': isMoreActive }"
@@ -25,10 +27,9 @@
     </button>
 
     <div v-if="dropdownOpen" class="nav__dropdown-menu">
-      <RouterLink to="/property-map" @click="dropdownOpen = false">Map</RouterLink>
-      <RouterLink to="/contact" @click="dropdownOpen = false">Contact</RouterLink>
+     
     </div>
-  </div>
+  </div> -->
 </nav>
 
       <div class="nav__actions">

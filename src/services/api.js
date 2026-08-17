@@ -28,10 +28,28 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Handle unauthorized - clear token/user and redirect to login
-      localStorage.removeItem('auth_token')
-      localStorage.removeItem('user')
-      window.location.href = '/login'
+      // The token is missing/expired/invalid — clear it so the app's
+      // reactive auth state (Navbar, route guards) reflects "logged
+      // out" right away.
+      //
+      // Deliberately NOT force-navigating to /login here anymore: most
+      // pages are public now (see router/index.js), so a 401 from a
+      // single request — submitting a listing while logged out, sending
+      // a message while logged out — should surface as an inline
+      // "please log in" prompt from whichever component made the call,
+      // not yank the person away from a page (and a half-filled form)
+      // they're allowed to be on.
+      //
+      // Dynamic import to avoid a circular dependency: stores/auth.js
+      // imports services/authService.js, which imports this file.
+      import('@/stores/auth')
+        .then(({ useAuthStore }) => useAuthStore().clearSession())
+        .catch(() => {
+          // Pinia isn't active yet (e.g. a 401 during app bootstrap) —
+          // fall back to clearing storage directly.
+          localStorage.removeItem('auth_token')
+          localStorage.removeItem('user')
+        })
     }
     return Promise.reject(error)
   }

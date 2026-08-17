@@ -978,9 +978,10 @@ watch(filteredMessages, () => {
 .admin__search input {
   width: 100%;
   border: 1px solid rgba(237, 231, 218, 0.18);
+  border-radius: 999px;
   background: var(--ink-soft);
   color: var(--bone);
-  padding: 10px 14px;
+  padding: 10px 16px;
   font-size: 14px;
   font-family: var(--font-body);
 }

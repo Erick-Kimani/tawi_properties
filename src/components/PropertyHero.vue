@@ -18,10 +18,10 @@
       </div>
 
       <div class="hero__copy">
-        <p class="hero__eyebrow">Nairobi &amp; environs</p>
+        <h1 class="hero__eyebrow">Nairobi &amp; environs</h1>
         <h1 class="hero__headline">Addresses,<br />framed properly.</h1>
         <p class="hero__sub">Verified listings across Karen, Kilimani, Westlands and beyond — photographed the way an agent would want them seen.</p>
-        <a class="hero__cta" href="/listings">Browse listings</a>
+        <!-- <a class="hero__cta" href="/listings">Browse listings</a> -->
       </div>
     </div>
   </section>
@@ -36,19 +36,16 @@ const skew = 64
 const panels = [
   {
     id: 1,
-    label: 'Karen',
     image: '/images/Picture7.jpg',
     clip: `polygon(0 0, 100% 0, calc(100% - ${skew}px) 100%, 0 100%)`
   },
   {
     id: 2,
-    label: 'Kilimani',
     image: '/images/Picture1.jpg',
     clip: `polygon(${skew}px 0, 100% 0, calc(100% - ${skew}px) 100%, 0 100%)`
   },
   {
     id: 3,
-    label: 'Westlands',
     image:'/images/Picture2.jpg',
     clip: `polygon(${skew}px 0, 100% 0, 100% 100%, 0 100%)`
   }
@@ -127,10 +124,10 @@ onMounted(() => {
 
 .hero__eyebrow {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 17px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--brass-bright);
+  /* color: var(--brass-bright); */
   margin: 0 0 12px;
 }
 

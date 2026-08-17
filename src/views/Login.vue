@@ -141,11 +141,12 @@
 
 <script setup>
 import { reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import authService from '@/services/authService'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
 const form = reactive({
@@ -170,8 +171,12 @@ async function handleSubmit() {
     // Store the authentication token and update the reactive auth state
     authStore.setSession(response.data.token, response.data.user)
 
-    // Redirect to home or dashboard
-    router.push('/')
+    // Send them back wherever they were headed — e.g. the router guard
+    // sets ?redirect=/admin, or a "log in to submit"/"log in to send a
+    // message" prompt on a page (Listaproperty.vue, Contact.vue) sets
+    // it to the page they were already on. Falls back to home.
+    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
+    router.push(redirect)
   } catch (error) {
     submitting.value = false
     errorMessage.value = error.response?.data?.message || 'Login failed. Please try again.'

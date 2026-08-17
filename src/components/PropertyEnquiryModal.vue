@@ -75,27 +75,50 @@
           <p class="enquiry-modal__owner">Listed by {{ listing.fullName }}</p>
 
           <div class="enquiry-modal__contact">
-            <a
-              v-if="listing.phone"
-              class="enquiry-modal__contact-link"
-              :href="`tel:${listing.phone}`"
-            >
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <path d="M3.5 1.5h2l1 3-1.5 1a9 9 0 0 0 4.5 4.5l1-1.5 3 1v2c0 .8-.7 1.5-1.5 1.5C7.5 13.5 2.5 8.5 2 3c0-.8.7-1.5 1.5-1.5Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
-              </svg>
-              {{ listing.phone }}
-            </a>
-            <a
-              v-if="listing.email"
-              class="enquiry-modal__contact-link"
-              :href="`mailto:${listing.email}`"
-            >
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <rect x="1.5" y="3" width="13" height="10" rx="1.2" stroke="currentColor" stroke-width="1.2"/>
-                <path d="m2 4 6 4.5L14 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              {{ listing.email }}
-            </a>
+            <!-- Signed in: full, clickable contact details. -->
+            <template v-if="isAuthenticated">
+              <a
+                v-if="listing.phone"
+                class="enquiry-modal__contact-link"
+                :href="`tel:${listing.phone}`"
+              >
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path d="M3.5 1.5h2l1 3-1.5 1a9 9 0 0 0 4.5 4.5l1-1.5 3 1v2c0 .8-.7 1.5-1.5 1.5C7.5 13.5 2.5 8.5 2 3c0-.8.7-1.5 1.5-1.5Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+                </svg>
+                {{ listing.phone }}
+              </a>
+              <a
+                v-if="listing.email"
+                class="enquiry-modal__contact-link"
+                :href="`mailto:${listing.email}`"
+              >
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <rect x="1.5" y="3" width="13" height="10" rx="1.2" stroke="currentColor" stroke-width="1.2"/>
+                  <path d="m2 4 6 4.5L14 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                {{ listing.email }}
+              </a>
+            </template>
+
+            <!-- Guest: masked phone (as sent by the API — see
+                 PropertySubmissionController::featured, this isn't just
+                 a display trick), no email at all, plain text not a
+                 link since there's nothing valid to call/email yet. -->
+            <template v-else>
+              <span v-if="listing.phone" class="enquiry-modal__contact-link enquiry-modal__contact-link--masked">
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path d="M3.5 1.5h2l1 3-1.5 1a9 9 0 0 0 4.5 4.5l1-1.5 3 1v2c0 .8-.7 1.5-1.5 1.5C7.5 13.5 2.5 8.5 2 3c0-.8.7-1.5 1.5-1.5Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+                </svg>
+                {{ listing.phone }}
+              </span>
+            </template>
+          </div>
+
+          <div v-if="!isAuthenticated" class="enquiry-modal__login-prompt">
+            <p>Log in to view the full phone number and email for this listing.</p>
+            <RouterLink class="enquiry-modal__login-link" :to="loginLink">
+              Log in →
+            </RouterLink>
           </div>
 
           <p v-if="listing.description" class="enquiry-modal__description">
@@ -141,11 +164,21 @@
  * since there's only one frame). See the note I'll leave in chat for
  * what a multi-photo backend change would involve.
  *
+ * NOTE ON GUEST CONTACT MASKING: the masked phone / missing email you
+ * see here for guests is not just a display trick — the public
+ * /property-listings endpoint (PropertySubmissionController::featured)
+ * redacts them server-side for unauthenticated requests, so the raw
+ * data was never sent to the browser in the first place. This
+ * component just decides how to *present* whatever the API gave it
+ * (plain text vs a tel:/mailto: link), it doesn't do the actual
+ * hiding.
+ *
  * NOTE ON "SIZE": still no dedicated size/area field on the model —
  * same caveat as before, `description` is the only free-text field.
  */
 import { computed, ref, watch, nextTick } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import { resolvePinCategory, resolvePinColor, pinLegendLabel, DEFAULT_PIN_COLOR } from '@/utils/propertyPinColors'
 
 const props = defineProps({
@@ -159,6 +192,16 @@ const props = defineProps({
   },
 })
 defineEmits(['close'])
+
+const route = useRoute()
+const authStore = useAuthStore()
+const isAuthenticated = computed(() => authStore.isAuthenticated)
+// Sends them back to whichever Buy/Rent page they had this modal open
+// on. Doesn't reopen the modal automatically after login — logging in
+// re-mounts the page fresh — but it does land them right back where
+// they were instead of on some generic page.
+const loginLink = computed(() => ({ path: '/login', query: { redirect: route.path } }))
+
 
 const fallbackImage = '/images/Picture2.jpg'
 const dialogEl = ref(null)
@@ -459,6 +502,48 @@ const mapLink = computed(() => {
 .enquiry-modal__contact-link:hover {
   background: var(--brass, #a9814b);
   color: var(--ink, #14171c);
+}
+
+.enquiry-modal__contact-link--masked {
+  cursor: default;
+  opacity: 0.75;
+  letter-spacing: 0.02em;
+}
+
+.enquiry-modal__contact-link--masked:hover {
+  background: rgba(234, 229, 216, 0.06);
+  color: var(--bone, #eae5d8);
+}
+
+.enquiry-modal__login-prompt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 12px 16px;
+  margin-bottom: 22px;
+  background: rgba(169, 129, 75, 0.08);
+  border: 1px solid rgba(169, 129, 75, 0.3);
+  border-radius: 8px;
+}
+
+.enquiry-modal__login-prompt p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--bone-dim, #cfc8b6);
+}
+
+.enquiry-modal__login-link {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--brass-bright, #c8a06a);
+  text-decoration: none;
+}
+
+.enquiry-modal__login-link:hover {
+  text-decoration: underline;
 }
 
 .enquiry-modal__description {

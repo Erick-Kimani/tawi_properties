@@ -11,9 +11,16 @@
           Questions, suggestions, or something not working right?
         </h1>
         <p class="contact__intro-sub">
-          Send us a message and our team will get back to you. Since you're signed
-          in, we already have your account on file — no need to re-enter your
-          email or phone number.
+          <template v-if="authStore.isAuthenticated">
+            Send us a message and our team will get back to you. Since you're signed
+            in, we already have your account on file — no need to re-enter your
+            email or phone number.
+          </template>
+          <template v-else>
+            Send us a message and our team will get back to you. You'll need to
+            log in first, so we know your account and can reply to the right
+            place.
+          </template>
         </p>
 
         <ul class="contact__benefits">
@@ -33,70 +40,90 @@
         <div class="contact__header">
           <p class="contact__eyebrow contact__eyebrow--card">Contact us</p>
           <h2 class="contact__title">Send a message</h2>
-          <p class="contact__sub">
+          <p v-if="authStore.isAuthenticated" class="contact__sub">
             Signed in as <strong>{{ authStore.user?.name || authStore.user?.email }}</strong>.
+          </p>
+          <p v-else class="contact__sub">
+            You'll need to log in first — that's how we know who to reply to.
           </p>
         </div>
 
-        <!-- Your messages — every thread the sender has ever started, with
-             any replies from the team. Fetched from /contact-messages/mine,
-             scoped server-side to this user so it can never show anyone
-             else's messages. -->
-        <div v-if="messagesLoading" class="contact__thread-status">Loading your messages…</div>
-        <p v-else-if="messagesError" class="field__error">{{ messagesError }}</p>
+        <template v-if="authStore.isAuthenticated">
+          <!-- Your messages — every thread the sender has ever started, with
+               any replies from the team. Fetched from /contact-messages/mine,
+               scoped server-side to this user so it can never show anyone
+               else's messages. -->
+          <div v-if="messagesLoading" class="contact__thread-status">Loading your messages…</div>
+          <p v-else-if="messagesError" class="field__error">{{ messagesError }}</p>
 
-        <div v-if="!messagesLoading && threads.length" class="contact__threads">
-          <p class="contact__threads-label">Your messages</p>
+          <div v-if="!messagesLoading && threads.length" class="contact__threads">
+            <p class="contact__threads-label">Your messages</p>
 
-          <div v-for="t in threads" :key="t.id" class="contact__thread">
-            <div class="contact__thread-head">
-              <span class="status-pill" :class="'status-pill--' + t.status">{{ t.status }}</span>
-              <span class="contact__thread-date">{{ t.createdAt }}</span>
+            <div v-for="t in threads" :key="t.id" class="contact__thread">
+              <div class="contact__thread-head">
+                <span class="status-pill" :class="'status-pill--' + t.status">{{ t.status }}</span>
+                <span class="contact__thread-date">{{ t.createdAt }}</span>
+              </div>
+              <p class="contact__thread-message">{{ t.message }}</p>
+
+              <div v-if="t.replies.length" class="contact__thread-replies">
+                <p
+                  v-for="r in t.replies"
+                  :key="r.id"
+                  class="contact__thread-reply"
+                  :class="{ 'contact__thread-reply--admin': r.isAdmin }"
+                >
+                  <span class="contact__thread-reply-label">
+                    {{ r.isAdmin ? 'Tawi Properties' : 'You' }} · {{ r.createdAt }}
+                  </span>
+                  {{ r.body }}
+                </p>
+              </div>
             </div>
-            <p class="contact__thread-message">{{ t.message }}</p>
+          </div>
 
-            <div v-if="t.replies.length" class="contact__thread-replies">
-              <p
-                v-for="r in t.replies"
-                :key="r.id"
-                class="contact__thread-reply"
-                :class="{ 'contact__thread-reply--admin': r.isAdmin }"
-              >
-                <span class="contact__thread-reply-label">
-                  {{ r.isAdmin ? 'Tawi Properties' : 'You' }} · {{ r.createdAt }}
-                </span>
-                {{ r.body }}
-              </p>
+          <form class="contact__form" @submit.prevent="handleSubmit">
+            <div class="field">
+              <label for="message">{{ threads.length ? 'Send another message' : 'Your message' }}</label>
+              <textarea
+                id="message"
+                v-model="messageText"
+                rows="7"
+                placeholder="What's on your mind? A question, a suggestion, a bug you've run into..."
+                required
+              ></textarea>
             </div>
+
+            <p v-if="error" class="field__error">{{ error }}</p>
+            <p v-if="justSent" class="contact__sent-note">✓ Sent — it now appears above.</p>
+
+            <button type="submit" class="contact__submit" :disabled="submitting">
+              {{ submitting ? 'Sending…' : 'Send message' }}
+            </button>
+          </form>
+        </template>
+
+        <div v-else class="contact__login-prompt">
+          <p>
+            Create a free account or log in to send us a message and keep track
+            of any replies.
+          </p>
+          <div class="contact__login-prompt-actions">
+            <RouterLink class="contact__submit contact__submit--link" :to="{ path: '/login', query: { redirect: '/contact' } }">
+              Log in
+            </RouterLink>
+            <RouterLink class="contact__login-prompt-signup" to="/signup">
+              Create an account
+            </RouterLink>
           </div>
         </div>
-
-        <form class="contact__form" @submit.prevent="handleSubmit">
-          <div class="field">
-            <label for="message">{{ threads.length ? 'Send another message' : 'Your message' }}</label>
-            <textarea
-              id="message"
-              v-model="messageText"
-              rows="7"
-              placeholder="What's on your mind? A question, a suggestion, a bug you've run into..."
-              required
-            ></textarea>
-          </div>
-
-          <p v-if="error" class="field__error">{{ error }}</p>
-          <p v-if="justSent" class="contact__sent-note">✓ Sent — it now appears above.</p>
-
-          <button type="submit" class="contact__submit" :disabled="submitting">
-            {{ submitting ? 'Sending…' : 'Send message' }}
-          </button>
-        </form>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import contactMessageService from '@/services/contactMessageService'
@@ -128,6 +155,10 @@ function mapThread(m) {
 }
 
 async function loadThreads() {
+  if (!authStore.isAuthenticated) {
+    messagesLoading.value = false
+    return
+  }
   messagesLoading.value = true
   messagesError.value = ''
   try {
@@ -140,7 +171,13 @@ async function loadThreads() {
   }
 }
 
+// Covers both the initial page load and someone logging in without
+// leaving this page (e.g. a second tab, or a future "log in inline"
+// flow) — either way, threads load the moment we have a session.
 onMounted(loadThreads)
+watch(() => authStore.isAuthenticated, (isAuthed) => {
+  if (isAuthed) loadThreads()
+})
 
 async function handleSubmit() {
   error.value = ''
@@ -474,6 +511,40 @@ async function handleSubmit() {
   margin: 0;
   font-size: 12px;
   color: var(--pine-bright);
+}
+
+.contact__login-prompt {
+  padding: 18px 20px;
+  background: rgba(169, 129, 75, 0.08);
+  border: 1px solid rgba(169, 129, 75, 0.35);
+  border-radius: 5px;
+}
+
+.contact__login-prompt p {
+  margin: 0 0 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--bone-dim);
+}
+
+.contact__login-prompt-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.contact__submit--link {
+  display: inline-block;
+  width: auto;
+  margin-top: 0;
+  text-decoration: none;
+  text-align: center;
+  padding: 12px 24px;
+}
+
+.contact__login-prompt-signup {
+  font-size: 13px;
+  color: var(--brass-bright);
 }
 
 .status-pill {

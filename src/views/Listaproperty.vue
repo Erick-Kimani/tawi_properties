@@ -43,7 +43,29 @@
           </p>
         </div>
 
-        <form v-if="!submitted" class="list-property__form" @submit.prevent="handleSubmit">
+        <div v-if="!submitted && !isAuthenticated" class="list-property__auth-notice">
+          <p>
+            You'll need an account to register a property. Log in or create one
+            first — the form below stays visible so you can see what's needed,
+            but it's locked until then.
+          </p>
+          <div class="list-property__auth-notice-actions">
+            <RouterLink class="btn btn--primary" :to="{ path: '/login', query: { redirect: '/list-property' } }">
+              Log in
+            </RouterLink>
+            <RouterLink class="list-property__login-prompt-signup" to="/signup">
+              Create an account
+            </RouterLink>
+          </div>
+        </div>
+
+        <div
+          v-if="!submitted"
+          class="list-property__form-wrap"
+          :class="{ 'list-property__form-wrap--disabled': !isAuthenticated }"
+        >
+        <form class="list-property__form" @submit.prevent="handleSubmit">
+        <fieldset class="list-property__fieldset" :disabled="!isAuthenticated">
         <div class="field">
           <label id="intent-label">I want to</label>
           <div class="intent-toggle" role="radiogroup" aria-labelledby="intent-label">
@@ -188,13 +210,27 @@
         </div>
 
         <p v-if="error" class="field__error">{{ error }}</p>
+        <div v-if="needsLogin" class="list-property__login-prompt">
+          <p>
+            You'll need an account to submit a property — it's how we let you
+            know if it's featured, and how you'd manage it afterward.
+          </p>
+          <RouterLink class="btn btn--primary" :to="{ path: '/login', query: { redirect: '/list-property' } }">
+            Log in to continue
+          </RouterLink>
+          <RouterLink class="list-property__login-prompt-signup" to="/signup">
+            or create an account
+          </RouterLink>
+        </div>
 
-        <button type="submit" class="list-property__submit" :disabled="submitting">
+        <button type="submit" class="list-property__submit" :disabled="submitting || !isAuthenticated">
           {{ submitting ? 'Submitting…' : 'Submit for review' }}
         </button>
+        </fieldset>
       </form>
+      </div>
 
-      <div v-else class="list-property__success">
+      <div v-if="submitted" class="list-property__success">
         <div class="list-property__success-glyph">✓</div>
         <h2>Submission received</h2>
         <p>
@@ -214,14 +250,17 @@
 </template>
 
 <script setup>
-import { reactive, ref, watch, onMounted } from 'vue'
+import { reactive, ref, watch, onMounted, computed } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import PropertyMap from '@/components/PropertyMap.vue'
 import { usePropertyTypes } from '@/stores/propertyTypes'
+import { useAuthStore } from '@/stores/auth'
 import propertySubmissionService from '@/services/propertySubmissionService'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
+const isAuthenticated = computed(() => authStore.isAuthenticated)
 
 const {
   propertyTypes,
@@ -257,6 +296,11 @@ const pin = ref(null) // { lat, lng } | null — set via the PropertyMap picker
 const submitting = ref(false)
 const submitted = ref(false)
 const error = ref('')
+// True after a submit attempt comes back 401 — the page itself is public
+// (anyone can fill the form out), but actually submitting still requires
+// an account server-side. Shows a login/signup prompt instead of a raw
+// error string in that specific case.
+const needsLogin = ref(false)
 const lastSubmittedName = ref('')
 
 // Keep the selected type valid once the real API list arrives (it may
@@ -326,6 +370,16 @@ function handlePhoto(event) {
 
 async function handleSubmit() {
   error.value = ''
+  needsLogin.value = false
+
+  // Defense in depth — the fieldset above is already disabled (and the
+  // submit button too) whenever !isAuthenticated, so this shouldn't be
+  // reachable in normal use. Covers the edge case of a session dying
+  // server-side without the local reactive state catching up yet.
+  if (!isAuthenticated.value) {
+    needsLogin.value = true
+    return
+  }
 
   if (!form.fullName || !form.email || !form.phone || !form.priceRange || !form.location) {
     error.value = 'Please fill in all required fields.'
@@ -355,8 +409,12 @@ async function handleSubmit() {
     lastSubmittedName.value = form.fullName
     submitted.value = true
   } catch (err) {
-    error.value = err.response?.data?.message
-      || 'Something went wrong submitting your property. Please try again.'
+    if (err.response?.status === 401) {
+      needsLogin.value = true
+    } else {
+      error.value = err.response?.data?.message
+        || 'Something went wrong submitting your property. Please try again.'
+    }
   } finally {
     submitting.value = false
   }
@@ -368,6 +426,7 @@ function resetForm() {
   pin.value = null
   submitted.value = false
   error.value = ''
+  needsLogin.value = false
 }
 </script>
 
@@ -697,6 +756,73 @@ function resetForm() {
   margin: 0;
   font-size: 12px;
   color: #d98b6a;
+}
+
+.list-property__auth-notice {
+  margin-bottom: 24px;
+  padding: 18px 20px;
+  background: rgba(169, 129, 75, 0.1);
+  border: 1px solid rgba(169, 129, 75, 0.4);
+  border-radius: 6px;
+}
+
+.list-property__auth-notice p {
+  margin: 0 0 14px;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--bone-dim, #cfc8b6);
+}
+
+.list-property__auth-notice-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+/* Visually greys out + blocks interaction with everything inside —
+   including the PropertyMap picker, which isn't a native form control
+   and so wouldn't be caught by <fieldset disabled> on its own. The
+   fieldset below handles keyboard/native-control disabling; this
+   handles the rest (map clicks, visual dimming). */
+.list-property__form-wrap--disabled {
+  position: relative;
+  opacity: 0.5;
+  filter: grayscale(0.4);
+  pointer-events: none;
+  user-select: none;
+}
+
+.list-property__fieldset {
+  border: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.list-property__login-prompt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  background: rgba(169, 129, 75, 0.08);
+  border: 1px solid rgba(169, 129, 75, 0.35);
+  border-radius: 6px;
+}
+
+.list-property__login-prompt p {
+  flex: 1 1 100%;
+  margin: 0 0 4px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--bone-dim, #cfc8b6);
+}
+
+.list-property__login-prompt-signup {
+  font-size: 13px;
+  color: var(--brass-bright, #c8a06a);
 }
 
 .list-property__submit {

@@ -94,19 +94,22 @@
 </template>
 <script setup>
 import { computed, ref, onMounted, watch } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import LocationDropdown from '../components/LocationDropdown.vue'
 import PropertyTypeDropdown from '../components/PropertyTypeDropdown.vue'
 import PropertyEnquiryModal from '../components/PropertyEnquiryModal.vue'
 import propertySubmissionService from '@/services/propertySubmissionService'
 
+const route = useRoute()
 const fallbackImage = '/images/Picture6.jpg'
 
-const query = ref('')
+// Seeded from the URL so the homepage search bar's "Rent" result lands
+// here pre-filtered — e.g. /rent?location=Nairobi&type=Apartments.
+const query = ref(typeof route.query.location === 'string' ? route.query.location : '')
 // '' = All categories. This filters by property `type` (e.g. "Apartments"),
 // independent of listing_type: 'rent' below, which is what makes this the
 // Rent page rather than the Buy page.
-const selectedType = ref('')
+const selectedType = ref(typeof route.query.type === 'string' ? route.query.type : '')
 
 // Currently-open "Enquire" listing, or null when the modal is closed.
 const enquiryItem = ref(null)
@@ -222,6 +225,7 @@ const listings = computed(() => {
   margin: 0 auto;
   background: var(--slate);
   border: 1px solid rgba(169, 129, 75, 0.3);
+  border-radius: 14px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;

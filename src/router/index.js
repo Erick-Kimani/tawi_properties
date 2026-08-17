@@ -71,20 +71,22 @@ const router = createRouter({
   ],
 })
 
-const publicPages = ['/login', '/signup']
-
 router.beforeEach((to, from, next) => {
-  const authStore = useAuthStore() // Access the store inside the guard
-  const token = localStorage.getItem('auth_token')
-  const isPublic = publicPages.includes(to.path)
+  const authStore = useAuthStore()
 
-  if (!isPublic && !token) {
-    return next({ name: 'login' })
-  }
-
-  // Intercept normal users using the correct nested role slug object structure
-  if (to.meta.requiresAdmin && authStore.user?.role?.slug !== 'administrator') {
-    return next({ name: 'home' })
+  // Everything is public by default — Home, Buy, Rent, the map, category
+  // pages, List a Property, and Contact are all browsable without an
+  // account. List a Property and Contact each handle their own inline
+  // "log in first" treatment for the actual gated action (see
+  // Listaproperty.vue / Contact.vue) rather than being redirected away
+  // from here — only /admin is actually gated at the router level.
+  if (to.meta.requiresAdmin) {
+    if (!authStore.isAuthenticated) {
+      return next({ name: 'login', query: { redirect: to.fullPath } })
+    }
+    if (authStore.user?.role?.slug !== 'administrator') {
+      return next({ name: 'home' })
+    }
   }
 
   return next()

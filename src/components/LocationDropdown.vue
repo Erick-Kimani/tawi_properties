@@ -12,7 +12,13 @@
         @blur="handleBlur"
       />
       <div v-if="isOpen" class="location-dropdown__dropdown">
-        <div v-if="filteredCounties.length > 0" class="location-dropdown__list">
+        <div v-if="countiesLoading" class="location-dropdown__empty">
+          Loading counties…
+        </div>
+        <div v-else-if="countiesError" class="location-dropdown__empty">
+          {{ countiesError }}
+        </div>
+        <div v-else-if="filteredCounties.length > 0" class="location-dropdown__list">
           <button
             v-for="county in filteredCounties"
             :key="county"
@@ -32,13 +38,25 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useCounties } from '@/stores/counties'
 
 // `activeCounties` already excludes any county an admin has pulled down
 // from the Admin dashboard, so this dropdown (and any other component that
 // uses it) always reflects the current admin-approved list automatically.
-const { activeCounties } = useCounties()
+//
+// fetchCounties() is what actually populates that list from the backend —
+// previously only Admin.vue ever called it, so any dropdown mounted on a
+// page nobody had visited /admin from first (Buy, Rent, Home, Categories)
+// stayed permanently empty. It's called here so every dropdown loads its
+// own data regardless of what else has (or hasn't) mounted; the store
+// no-ops repeat calls once the first one succeeds, so this is safe/cheap
+// even with several dropdowns on one page.
+const { activeCounties, fetchCounties, countiesLoading, countiesError } = useCounties()
+
+onMounted(() => {
+  fetchCounties()
+})
 
 const props = defineProps({
   label: {
@@ -132,10 +150,10 @@ function handleBlur() {
   top: 100%;
   left: 0;
   right: 0;
-  margin-top: 4px;
+  margin-top: 6px;
   background: var(--slate, #2a2e35);
   border: 1px solid rgba(169, 129, 75, 0.3);
-  border-radius: 4px;
+  border-radius: 10px;
   max-height: 300px;
   overflow-y: auto;
   z-index: 1000;

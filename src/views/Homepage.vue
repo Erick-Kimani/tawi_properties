@@ -13,8 +13,29 @@
           />
         </div>
         <div class="field">
-          <label>Price range</label>
-          <input v-model="searchFilters.priceRange" type="text" placeholder="KES ....." />
+          <label id="home-intent-label">I want to</label>
+          <div class="intent-toggle" role="radiogroup" aria-labelledby="home-intent-label">
+            <button
+              type="button"
+              class="intent-toggle__option"
+              :class="{ 'intent-toggle__option--active': searchFilters.intent === 'sale' }"
+              role="radio"
+              :aria-checked="searchFilters.intent === 'sale'"
+              @click="searchFilters.intent = 'sale'"
+            >
+              Buy
+            </button>
+            <button
+              type="button"
+              class="intent-toggle__option"
+              :class="{ 'intent-toggle__option--active': searchFilters.intent === 'rent' }"
+              role="radio"
+              :aria-checked="searchFilters.intent === 'rent'"
+              @click="searchFilters.intent = 'rent'"
+            >
+              Rent
+            </button>
+          </div>
         </div>
         <div class="field">
           <PropertyTypeDropdown
@@ -45,19 +66,25 @@ const router = useRouter()
 
 const searchFilters = reactive({
   location: '',
-  priceRange: '',
+  // 'sale' | 'rent' — decides whether Search sends them to /buy or /rent.
+  // 'sale' by default since Buy is the more common first click.
+  intent: 'sale',
   type: ''
 })
 
 function handleSearch() {
-  // Pass search filters to category listing or use for API call
-  const query = new URLSearchParams({
-    location: searchFilters.location,
-    priceRange: searchFilters.priceRange,
-    type: searchFilters.type
-  })
-  
-  router.push(`/buy?${query.toString()}`)
+  // Location and type are real filters both Buypage.vue/Rentpage.vue
+  // read from the URL on mount (see their onMounted) — location seeds
+  // LocationDropdown's selected county, type seeds the property-type
+  // dropdown. Intent itself isn't a query param — it's what decides
+  // which of the two pages to send them to in the first place.
+  const query = new URLSearchParams()
+  if (searchFilters.location) query.set('location', searchFilters.location)
+  if (searchFilters.type) query.set('type', searchFilters.type)
+
+  const destination = searchFilters.intent === 'rent' ? '/rent' : '/buy'
+  const queryString = query.toString()
+  router.push(queryString ? `${destination}?${queryString}` : destination)
 }
 </script>
 
@@ -77,6 +104,7 @@ function handleSearch() {
 .search-strip__inner {
   background: var(--slate);
   border: 1px solid rgba(169, 129, 75, 0.3);
+  border-radius: 14px;
   display: flex;
   flex-wrap: wrap;
   gap: 1px;
@@ -88,6 +116,15 @@ function handleSearch() {
   flex: 1 1 200px;
   padding: 14px 20px;
   border-right: 1px solid rgba(237, 231, 218, 0.08);
+}
+
+/* Round just the outer corners that actually sit on the container's
+   edge — NOT overflow: hidden on .search-strip__inner, which would also
+   clip LocationDropdown's absolutely-positioned results popup (it needs
+   to extend past this bar's bottom edge to show its list). */
+.field:first-child {
+  border-top-left-radius: 14px;
+  border-bottom-left-radius: 14px;
 }
 
 .field label {
@@ -113,11 +150,43 @@ function handleSearch() {
 .field input::placeholder { color: rgba(237, 231, 218, 0.35); }
 .field input:focus { outline: none; }
 
+.intent-toggle {
+  display: flex;
+  gap: 8px;
+}
+
+.intent-toggle__option {
+  flex: 1;
+  background: none;
+  border: 1px solid rgba(237, 231, 218, 0.15);
+  border-radius: 4px;
+  color: var(--bone-dim);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.intent-toggle__option:hover {
+  border-color: rgba(169, 129, 75, 0.5);
+  color: var(--bone);
+}
+
+.intent-toggle__option--active {
+  background: var(--brass);
+  border-color: var(--brass);
+  color: var(--ink);
+}
+
 .search-strip__submit {
   flex: 0 0 auto;
   background: var(--brass);
   color: var(--ink);
   border: none;
+  border-top-right-radius: 14px;
+  border-bottom-right-radius: 14px;
   font-size: 14px;
   font-weight: 500;
   letter-spacing: 0.02em;
@@ -131,6 +200,21 @@ function handleSearch() {
 @media (max-width: 720px) {
   .search-strip { transform: none; margin: 24px 20px 0; }
   .field { border-right: none; border-bottom: 1px solid rgba(237, 231, 218, 0.08); }
-  .search-strip__submit { width: 100%; padding: 16px; }
+  /* Stacked layout: the first field is now the top edge of the column
+     (not the left edge), and the submit button is the bottom edge — so
+     which corners get rounded flips from the desktop side-by-side rule
+     above. */
+  .field:first-child {
+    border-radius: 0;
+    border-top-left-radius: 14px;
+    border-top-right-radius: 14px;
+  }
+  .search-strip__submit {
+    width: 100%;
+    padding: 16px;
+    border-radius: 0;
+    border-bottom-left-radius: 14px;
+    border-bottom-right-radius: 14px;
+  }
   }
 </style>
