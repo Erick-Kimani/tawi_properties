@@ -132,6 +132,15 @@
         </button>
       </form>
 
+      <div class="auth__divider"><span>or</span></div>
+
+      <GoogleAuthButton
+        label="Sign in with Google"
+        :disabled="submitting"
+        @success="handleGoogleSuccess"
+        @error="handleGoogleError"
+      />
+
       <p class="auth__footer">
         Don't have an account?
         <RouterLink to="/signup">Create one</RouterLink>
@@ -145,6 +154,7 @@ import { reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import authService from '@/services/authService'
 import { useAuthStore } from '@/stores/auth'
+import GoogleAuthButton from '@/components/GoogleAuthButton.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -158,6 +168,20 @@ const form = reactive({
 const showPassword = ref(false)
 const submitting = ref(false)
 const errorMessage = ref('')
+
+function redirectAfterAuth() {
+  const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
+  router.push(redirect)
+}
+
+function handleGoogleSuccess(data) {
+  authStore.setSession(data.token, data.user)
+  redirectAfterAuth()
+}
+
+function handleGoogleError(message) {
+  errorMessage.value = message
+}
 
 async function handleSubmit() {
   errorMessage.value = ''
@@ -176,8 +200,7 @@ async function handleSubmit() {
     // sets ?redirect=/admin, or a "log in to submit"/"log in to send a
     // message" prompt on a page (Listaproperty.vue, Contact.vue) sets
     // it to the page they were already on. Falls back to home.
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
-    router.push(redirect)
+    redirectAfterAuth()
   } catch (error) {
     submitting.value = false
     errorMessage.value = error.response?.data?.message || 'Login failed. Please try again.'
@@ -423,6 +446,26 @@ async function handleSubmit() {
 
 .field__forgot:hover {
   text-decoration: underline;
+}
+
+.auth__divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 22px 0;
+  color: var(--bone-dim);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.auth__divider::before,
+.auth__divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(237, 231, 218, 0.15);
 }
 
 .auth__submit {

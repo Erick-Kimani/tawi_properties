@@ -35,6 +35,13 @@ export const authService = {
   // Step 2 — the code from that email + a new password.
   resetPassword({ email, code, password, password_confirmation }) {
     return apiClient.post('/reset-password', { email, code, password, password_confirmation })
+  },
+
+  // Logs in (or silently registers, if this Google account has never
+  // been seen before) using an OAuth access_token obtained from Google
+  // Identity Services — see services/googleAuth.js.
+  googleAuth(accessToken) {
+    return apiClient.post('/auth/google', { access_token: accessToken })
   }
 }
 

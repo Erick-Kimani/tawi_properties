@@ -78,6 +78,15 @@
         </button>
       </form>
 
+      <div class="auth__divider"><span>or</span></div>
+
+      <GoogleAuthButton
+        label="Sign up with Google"
+        :disabled="submitting"
+        @success="handleGoogleSuccess"
+        @error="handleGoogleError"
+      />
+
       <p class="auth__footer">
         Already have an account?
         <RouterLink to="/login">Sign in</RouterLink>
@@ -91,6 +100,7 @@ import { reactive, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import authService from '@/services/authService'
 import { useAuthStore } from '@/stores/auth'
+import GoogleAuthButton from '@/components/GoogleAuthButton.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -110,6 +120,15 @@ const errorMessage = ref('')
 const mismatch = computed(() =>
   form.confirmPassword.length > 0 && form.password !== form.confirmPassword
 )
+
+function handleGoogleSuccess(data) {
+  authStore.setSession(data.token, data.user)
+  router.push('/')
+}
+
+function handleGoogleError(message) {
+  errorMessage.value = message
+}
 
 async function handleSubmit() {
   if (form.password !== form.confirmPassword) return
@@ -276,6 +295,26 @@ async function handleSubmit() {
   margin: 0;
   font-size: 12px;
   color: #d98b6a;
+}
+
+.auth__divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 22px 0;
+  color: var(--bone-dim);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.auth__divider::before,
+.auth__divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(237, 231, 218, 0.15);
 }
 
 .auth__submit {
