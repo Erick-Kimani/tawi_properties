@@ -23,6 +23,18 @@ export const authService = {
 
   deleteUser(id) {
     return apiClient.delete(`/user/${id}`)
+  },
+
+  // Step 1 of password recovery — emails a 6-digit code if the address
+  // is registered. Backend always responds the same way either way, so
+  // don't infer whether the email exists from this response.
+  forgotPassword(email) {
+    return apiClient.post('/forgot-password', { email })
+  },
+
+  // Step 2 — the code from that email + a new password.
+  resetPassword({ email, code, password, password_confirmation }) {
+    return apiClient.post('/reset-password', { email, code, password, password_confirmation })
   }
 }
 

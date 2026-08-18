@@ -122,6 +122,7 @@
               {{ showPassword ? 'Hide' : 'Show' }}
             </button>
           </div>
+          <RouterLink to="/forgot-password" class="field__forgot">Forgot password?</RouterLink>
         </div>
 
         <p v-if="errorMessage" class="field__error">{{ errorMessage }}</p>
@@ -409,6 +410,19 @@ async function handleSubmit() {
   margin: 0;
   font-size: 12px;
   color: #d98b6a;
+}
+
+.field__forgot {
+  align-self: flex-end;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--brass-bright);
+  text-decoration: none;
+}
+
+.field__forgot:hover {
+  text-decoration: underline;
 }
 
 .auth__submit {
