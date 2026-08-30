@@ -42,6 +42,15 @@ export const authService = {
   // Identity Services — see services/googleAuth.js.
   googleAuth(accessToken) {
     return apiClient.post('/auth/google', { access_token: accessToken })
+  },
+
+  // Lets an already-logged-in user (typically a Google-only account that
+  // has never had a real password) set one, so manual email/password
+  // login works for their account too. Requires the auth token — no
+  // email/code step, unlike forgotPassword/resetPassword, since being
+  // logged in already proves account ownership.
+  setPassword({ password, password_confirmation }) {
+    return apiClient.post('/set-password', { password, password_confirmation })
   }
 }
 

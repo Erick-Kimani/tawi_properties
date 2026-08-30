@@ -33,6 +33,13 @@
 </nav>
 
       <div class="nav__actions">
+        <RouterLink
+          v-if="authStore.isAuthenticated && authStore.user?.google_id"
+          class="nav__ghost"
+          to="/set-password"
+        >
+          Set password
+        </RouterLink>
         <button
           v-if="authStore.isAuthenticated"
           type="button"
@@ -57,6 +64,13 @@
       <RouterLink to="/property-map" @click="menuOpen = false">Map</RouterLink>
       <RouterLink to="/contact" @click="menuOpen = false">Contact</RouterLink>
       <RouterLink class="nav__cta" to="/list-property" @click="menuOpen = false">List a property</RouterLink>
+      <RouterLink
+        v-if="authStore.isAuthenticated && authStore.user?.google_id"
+        to="/set-password"
+        @click="menuOpen = false"
+      >
+        Set password
+      </RouterLink>
       <button
         v-if="authStore.isAuthenticated"
         type="button"

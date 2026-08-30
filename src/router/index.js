@@ -4,6 +4,7 @@ import HomeView from '../views/Homepage.vue'
 import SignUpView from '../views/Signup.vue'
 import Login from '../views/Login.vue'
 import ForgotPassword from '../views/ForgotPassword.vue'
+import SetPassword from '../views/Setpassword.vue'
 import Admin from '../views/Admin.vue'
 import Listaproperty from '../views/Listaproperty.vue'
 import PropertyMapPage from '../views/PropertyMapPage.vue'
@@ -34,6 +35,12 @@ const router = createRouter({
       path: '/forgot-password',
       name: 'forgot-password',
       component: ForgotPassword,
+    },
+    {
+      path: '/set-password',
+      name: 'set-password',
+      component: SetPassword,
+      meta: { requiresAuth: true },
     },
     {
       path: '/admin',
@@ -93,6 +100,10 @@ router.beforeEach((to, from, next) => {
     if (authStore.user?.role?.slug !== 'administrator') {
       return next({ name: 'home' })
     }
+  }
+
+  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+    return next({ name: 'login', query: { redirect: to.fullPath } })
   }
 
   return next()
