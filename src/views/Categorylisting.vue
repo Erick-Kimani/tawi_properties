@@ -23,12 +23,15 @@
         <article class="listing-card" v-for="item in listings" :key="item.id">
           <div class="listing-card__media" :style="{ backgroundImage: `url(${item.photo || category.image})` }">
             <span class="listing-card__badge">{{ item.type }}</span>
+            <span class="listing-card__badge listing-card__badge--status">
+              {{ item.listingType === 'rent' ? 'For Rent' : 'For Sale' }}
+            </span>
           </div>
           <div class="listing-card__body">
             <p class="listing-card__price">{{ item.priceRange }}</p>
             <h3 class="listing-card__location">{{ item.location }}</h3>
             <p class="listing-card__owner">Listed by {{ item.fullName }}</p>
-            <a class="listing-card__cta" :href="`mailto:${item.email}`">Enquire</a>
+            <button type="button" class="listing-card__cta" @click="enquiryItem = item">Enquire</button>
           </div>
         </article>
       </div>
@@ -43,6 +46,8 @@
         <p class="cat-empty__sub">New properties are reviewed and featured regularly — check back soon, or be the first to list one.</p>
       </div>
     </section>
+
+    <PropertyEnquiryModal :listing="enquiryItem" @close="enquiryItem = null" />
   </div>
 
   <div class="cat-page cat-page--missing" v-else>
@@ -52,16 +57,58 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch, onMounted } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { getCategoryBySlug } from '../stores/Categories.js'
+import PropertyEnquiryModal from '../components/PropertyEnquiryModal.vue'
+import propertySubmissionService from '@/services/propertySubmissionService'
 
 const route = useRoute()
 const category = computed(() => getCategoryBySlug(route.params.slug))
 
+// Currently-open "Enquire" listing, or null when the modal is closed.
+const enquiryItem = ref(null)
+
+const allSubmissions = ref([])
+
+async function loadListings() {
+  try {
+    // No listing_type / type filter here — a category page shows every
+    // featured listing that matches the category's `matches()` predicate,
+    // whether it's for sale or for rent (see stores/Categories.js).
+    const { data } = await propertySubmissionService.getFeatured()
+    allSubmissions.value = data.map((s) => ({
+      id: s.id,
+      type: s.type,
+      listingType: s.listing_type,
+      fullName: s.full_name,
+      email: s.email,
+      phone: s.phone,
+      description: s.description,
+      priceRange: s.price_range,
+      location: s.location,
+      photo: s.photo_url,
+      lat: s.latitude !== undefined && s.latitude !== null ? Number(s.latitude) : null,
+      lng: s.longitude !== undefined && s.longitude !== null ? Number(s.longitude) : null,
+    }))
+  } catch (e) {
+    // Leave allSubmissions empty — the existing "no listings yet" empty
+    // state in the template already covers this case.
+  }
+}
+
+onMounted(loadListings)
+// The slug changes when navigating between category cards without a full
+// remount (e.g. clicking "Land" then "Commercial" from a shared layout),
+// so re-filter (no need to re-fetch — matches() runs against the same
+// full list) whenever it changes.
+watch(() => route.params.slug, () => {
+  enquiryItem.value = null
+})
+
 const listings = computed(() => {
   if (!category.value) return []
-  return []
+  return allSubmissions.value.filter((item) => category.value.matches(item))
 })
 </script>
 
@@ -227,6 +274,13 @@ const listings = computed(() => {
   background: rgba(20, 23, 28, 0.55);
 }
 
+.listing-card__badge--status {
+  left: auto;
+  right: 12px;
+  border-color: rgba(169, 129, 75, 0.55);
+  color: var(--brass-bright);
+}
+
 .listing-card__body {
   padding: 18px 20px 22px;
 }
@@ -254,12 +308,15 @@ const listings = computed(() => {
 
 .listing-card__cta {
   display: inline-block;
+  font-family: inherit;
   font-size: 13px;
   font-weight: 500;
   color: var(--ink);
   background: var(--brass);
+  border: none;
   padding: 9px 16px;
   text-decoration: none;
+  cursor: pointer;
   transition: background 0.2s ease;
 }
 

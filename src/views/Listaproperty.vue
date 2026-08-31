@@ -128,15 +128,51 @@
             />
           </div>
           <div class="field">
-            <label for="phone">Phone number</label>
-            <input
-              id="phone"
-              v-model="form.phone"
-              type="tel"
-              placeholder="+254 7xx xxx xxx"
-              autocomplete="tel"
-              required
-            />
+            <label for="phone-number">Phone number</label>
+            <div class="phone-field">
+              <div class="code-picker" @focusout="handleCodeBlur">
+                <button
+                  id="phone-country-code"
+                  type="button"
+                  class="code-picker__trigger"
+                  :aria-expanded="isCodeOpen"
+                  aria-haspopup="listbox"
+                  @click="isCodeOpen = !isCodeOpen"
+                >
+                  <img class="code-picker__flag" :src="selectedCountry.flag" :alt="`${selectedCountry.country} flag`" />
+                  <span class="code-picker__code">{{ selectedCountry.code }}</span>
+                  <svg class="code-picker__chevron" width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+
+                <ul v-if="isCodeOpen" class="code-picker__list" role="listbox">
+                  <li v-for="c in countryCodes" :key="c.iso">
+                    <button
+                      type="button"
+                      class="code-picker__option"
+                      :class="{ 'code-picker__option--active': c.code === form.phoneCountryCode }"
+                      role="option"
+                      :aria-selected="c.code === form.phoneCountryCode"
+                      @click="selectCountryCode(c)"
+                    >
+                      <img class="code-picker__flag" :src="c.flag" :alt="`${c.country} flag`" />
+                      <span class="code-picker__option-country">{{ c.country }}</span>
+                      <span class="code-picker__option-code">{{ c.code }}</span>
+                    </button>
+                  </li>
+                </ul>
+              </div>
+              <input
+                id="phone-number"
+                v-model="form.phone"
+                type="tel"
+                class="phone-field__number"
+                placeholder="7xx xxx xxx"
+                autocomplete="tel-national"
+                required
+              />
+            </div>
           </div>
         </div>
 
@@ -257,10 +293,82 @@ import { usePropertyTypes } from '@/stores/propertyTypes'
 import { useAuthStore } from '@/stores/auth'
 import propertySubmissionService from '@/services/propertySubmissionService'
 
+// Flag icons for the phone field's country-code picker, from the
+// "flag-icons" package (https://www.npmjs.com/package/flag-icons).
+// Imported individually (rather than the package's bundled CSS, which
+// ships all ~260 flags as background images) so the build only includes
+// the handful of flags this dropdown actually uses.
+import flagKE from 'flag-icons/flags/4x3/ke.svg'
+import flagUG from 'flag-icons/flags/4x3/ug.svg'
+import flagTZ from 'flag-icons/flags/4x3/tz.svg'
+import flagRW from 'flag-icons/flags/4x3/rw.svg'
+import flagBI from 'flag-icons/flags/4x3/bi.svg'
+import flagSS from 'flag-icons/flags/4x3/ss.svg'
+import flagET from 'flag-icons/flags/4x3/et.svg'
+import flagSO from 'flag-icons/flags/4x3/so.svg'
+import flagNG from 'flag-icons/flags/4x3/ng.svg'
+import flagGH from 'flag-icons/flags/4x3/gh.svg'
+import flagZA from 'flag-icons/flags/4x3/za.svg'
+import flagGB from 'flag-icons/flags/4x3/gb.svg'
+import flagUS from 'flag-icons/flags/4x3/us.svg'
+import flagIN from 'flag-icons/flags/4x3/in.svg'
+import flagAE from 'flag-icons/flags/4x3/ae.svg'
+
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const isAuthenticated = computed(() => authStore.isAuthenticated)
+
+// Country codes for the phone field's dropdown. Kenya is first/default
+// since that's the overwhelming majority of Tawi's sellers, followed by
+// neighbouring East African countries, then a handful of other common
+// ones. Extend this list as needed — it's intentionally a plain array,
+// not fetched from the backend, since dialing codes don't change.
+// `iso` (lowercased) is the class suffix the "flag-icons" package
+// (https://www.npmjs.com/package/flag-icons) uses to render each
+// country's flag — see the `fi fi-<iso>` spans in the template. Native
+// <select><option> elements can't render icons in any browser, which is
+// why the code picker below is a custom button + list instead of a
+// plain <select>.
+const countryCodes = [
+  { iso: 'KE', country: 'Kenya', code: '+254', flag: flagKE },
+  { iso: 'UG', country: 'Uganda', code: '+256', flag: flagUG },
+  { iso: 'TZ', country: 'Tanzania', code: '+255', flag: flagTZ },
+  { iso: 'RW', country: 'Rwanda', code: '+250', flag: flagRW },
+  { iso: 'BI', country: 'Burundi', code: '+257', flag: flagBI },
+  { iso: 'SS', country: 'South Sudan', code: '+211', flag: flagSS },
+  { iso: 'ET', country: 'Ethiopia', code: '+251', flag: flagET },
+  { iso: 'SO', country: 'Somalia', code: '+252', flag: flagSO },
+  { iso: 'NG', country: 'Nigeria', code: '+234', flag: flagNG },
+  { iso: 'GH', country: 'Ghana', code: '+233', flag: flagGH },
+  { iso: 'ZA', country: 'South Africa', code: '+27', flag: flagZA },
+  { iso: 'GB', country: 'United Kingdom', code: '+44', flag: flagGB },
+  { iso: 'US', country: 'United States', code: '+1', flag: flagUS },
+  { iso: 'IN', country: 'India', code: '+91', flag: flagIN },
+  { iso: 'AE', country: 'United Arab Emirates', code: '+971', flag: flagAE },
+]
+
+// Whether the country-code dropdown is open, and which entry is
+// currently selected (looked up from form.phoneCountryCode so the
+// trigger button's flag/code stays in sync no matter how the value
+// changes — including resetForm() re-defaulting it to Kenya).
+const isCodeOpen = ref(false)
+const selectedCountry = computed(
+  () => countryCodes.find((c) => c.code === form.phoneCountryCode) || countryCodes[0]
+)
+
+function selectCountryCode(c) {
+  form.phoneCountryCode = c.code
+  isCodeOpen.value = false
+}
+
+function handleCodeBlur(event) {
+  // Close once focus leaves the whole picker (trigger + list), not just
+  // the button that was clicked — e.g. tabbing or clicking an option.
+  if (!event.currentTarget.contains(event.relatedTarget)) {
+    isCodeOpen.value = false
+  }
+}
 
 const {
   propertyTypes,
@@ -280,6 +388,11 @@ function blankForm() {
     type: propertyTypes.value[0] || '',
     fullName: '',
     email: '',
+    // Split into a country code (dropdown) + local number (free text) so
+    // the person never has to type the "+254" prefix themselves. Combined
+    // back into one string via fullPhone() right before submit — the
+    // backend only ever sees a single `phone` field, same as before.
+    phoneCountryCode: countryCodes[0].code,
     phone: '',
     priceRange: '',
     location: '',
@@ -368,6 +481,16 @@ function handlePhoto(event) {
   reader.readAsDataURL(file)
 }
 
+// Combines the dropdown's country code with the typed local number into
+// the single string the backend expects for `phone` — e.g. "+254" +
+// "712 345 678" -> "+254 712 345 678". Strips a leading "0" from the
+// local number (e.g. "0712…") since that's the trunk prefix you drop
+// when dialing with a country code instead.
+function fullPhone() {
+  const local = form.phone.trim().replace(/^0+/, '')
+  return local ? `${form.phoneCountryCode} ${local}` : ''
+}
+
 async function handleSubmit() {
   error.value = ''
   needsLogin.value = false
@@ -394,7 +517,7 @@ async function handleSubmit() {
     payload.append('type', form.type) // property category, e.g. "Apartments"
     payload.append('full_name', form.fullName)
     payload.append('email', form.email)
-    payload.append('phone', form.phone)
+    payload.append('phone', fullPhone())
     payload.append('price_range', form.priceRange)
     payload.append('location', form.location)
     if (form.description) payload.append('description', form.description)
@@ -726,6 +849,140 @@ function resetForm() {
   padding: 10px 12px;
   color: var(--bone-dim);
   font-size: 13px;
+}
+
+/* Country-code + local-number combo — reads as a single input, with a
+   divider between the two segments instead of two separate boxes. */
+.phone-field {
+  display: flex;
+  align-items: stretch;
+  background: var(--ink);
+  border: 1px solid rgba(237, 231, 218, 0.15);
+  border-radius: 4px;
+  overflow: visible;
+  transition: border-color 0.15s ease;
+}
+
+.phone-field:focus-within {
+  border-color: var(--brass);
+}
+
+.phone-field__number {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: var(--bone);
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 12px 14px;
+}
+
+.phone-field__number:focus {
+  outline: none;
+}
+
+.phone-field__number::placeholder {
+  color: rgba(237, 231, 218, 0.3);
+}
+
+/* Custom country-code picker — a native <select> can't render flag
+   icons inside its options in any browser, so this is a button + list
+   instead, using the "flag-icons" package's `.fi.fi-<iso>` classes. */
+.code-picker {
+  position: relative;
+  flex: 0 0 auto;
+  border-right: 1px solid rgba(237, 231, 218, 0.15);
+}
+
+.code-picker__trigger {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 100%;
+  background: transparent;
+  border: none;
+  color: var(--bone);
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 12px 10px 12px 12px;
+  cursor: pointer;
+}
+
+.code-picker__trigger:focus {
+  outline: none;
+}
+
+.code-picker__code {
+  white-space: nowrap;
+}
+
+.code-picker__chevron {
+  color: var(--bone-dim);
+  flex-shrink: 0;
+}
+
+.code-picker__list {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  list-style: none;
+  margin: 0;
+  padding: 6px 0;
+  width: 240px;
+  max-height: 280px;
+  overflow-y: auto;
+  background: var(--slate);
+  border: 1px solid rgba(169, 129, 75, 0.3);
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+}
+
+.code-picker__option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--bone);
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  text-align: left;
+  padding: 9px 14px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.code-picker__option:hover,
+.code-picker__option--active {
+  background: rgba(169, 129, 75, 0.14);
+}
+
+.code-picker__option-country {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.code-picker__option-code {
+  flex-shrink: 0;
+  color: var(--bone-dim);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.code-picker .fi,
+.code-picker__flag {
+  flex-shrink: 0;
+  width: 18px;
+  height: 13px;
+  object-fit: cover;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(237, 231, 218, 0.15);
 }
 
 .photo-preview {
