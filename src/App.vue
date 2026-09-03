@@ -2,6 +2,7 @@
 import { RouterView, useRoute } from 'vue-router'
 import Navbar from './components/Navbar.vue'
 import Footer from './components/Footer.vue'
+import FloatingWhatsApp from './components/FloatingWhatsApp.vue'
 
 const route = useRoute()
 </script>
@@ -14,6 +15,7 @@ const route = useRoute()
     </main>
     <!-- The footer will now hide automatically on the map view -->
     <Footer v-if="route.name !== 'property-map'" />
+    <FloatingWhatsApp />
   </div>
 </template>
 
