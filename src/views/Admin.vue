@@ -448,6 +448,79 @@
         <p>No counties match this search.</p>
       </div>
     </section>
+
+    <section class="admin__counties" ref="accountAccessRef">
+      <div class="admin__counties-head">
+        <div>
+          <h2 class="admin__counties-title">Locked-out accounts</h2>
+          <p class="admin__counties-sub">
+            The Set password page is one-time use per account. If someone's
+            already used theirs and can't complete "Forgot password" either
+            (e.g. no access to that inbox anymore), look them up by email
+            and grant one more attempt.
+          </p>
+        </div>
+      </div>
+
+      <form class="admin__toolbar" @submit.prevent="handleFindUser">
+        <div class="admin__search">
+          <input
+            v-model="accountLookupEmail"
+            type="email"
+            placeholder="user@example.com"
+            aria-label="Look up user by email"
+            required
+          />
+        </div>
+        <button type="submit" class="filter-pill" :disabled="accountLookupLoading">
+          {{ accountLookupLoading ? 'Searching…' : 'Look up' }}
+        </button>
+      </form>
+
+      <p v-if="accountLookupError" class="admin__status-text admin__status-text--error">
+        {{ accountLookupError }}
+      </p>
+      <p v-if="accountGrantMessage" class="admin__status-text">
+        {{ accountGrantMessage }}
+      </p>
+
+      <div class="admin__table card-surface" v-if="accountLookupResult">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Password status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>{{ accountLookupResult.name }}</td>
+              <td>{{ accountLookupResult.email }}</td>
+              <td>
+                <span
+                  class="status-pill"
+                  :class="accountLookupResult.can_set_password ? 'status-pill--featured' : 'status-pill--pending'"
+                >
+                  {{ accountLookupResult.can_set_password ? 'Can use Set password' : 'Already used' }}
+                </span>
+              </td>
+              <td class="admin__actions">
+                <button
+                  v-if="!accountLookupResult.can_set_password"
+                  class="action action--feature"
+                  :disabled="accountGrantLoading"
+                  @click="handleGrantAccess"
+                >
+                  {{ accountGrantLoading ? 'Granting…' : 'Grant one-time access' }}
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
     </div>
   </div>
 </template>
@@ -458,6 +531,7 @@ import { animate } from 'animejs'
 import { useCounties } from '@/stores/counties'
 import propertySubmissionService from '@/services/propertySubmissionService'
 import contactMessageService from '@/services/contactMessageService'
+import authService from '@/services/authService'
 
 const rows = ref([])
 const loading = ref(true)
@@ -1016,6 +1090,48 @@ const filteredCounties = computed(() => {
 
   return result.filter((county) => county.toLowerCase().includes(query))
 })
+
+// --- Locked-out accounts: grant a one-time Set password re-attempt ----
+const accountAccessRef = ref(null)
+const accountLookupEmail = ref('')
+const accountLookupLoading = ref(false)
+const accountLookupError = ref('')
+const accountLookupResult = ref(null)
+const accountGrantLoading = ref(false)
+const accountGrantMessage = ref('')
+
+async function handleFindUser() {
+  accountLookupError.value = ''
+  accountGrantMessage.value = ''
+  accountLookupResult.value = null
+  accountLookupLoading.value = true
+
+  try {
+    const response = await authService.findUserByEmail(accountLookupEmail.value.trim())
+    accountLookupResult.value = response.data
+  } catch (error) {
+    accountLookupError.value = error.response?.data?.error || 'No user found with that email.'
+  } finally {
+    accountLookupLoading.value = false
+  }
+}
+
+async function handleGrantAccess() {
+  if (!accountLookupResult.value) return
+
+  accountGrantMessage.value = ''
+  accountGrantLoading.value = true
+
+  try {
+    const response = await authService.grantSetPasswordAccess(accountLookupResult.value.id)
+    accountLookupResult.value = response.data.user
+    accountGrantMessage.value = response.data.message
+  } catch (error) {
+    accountLookupError.value = error.response?.data?.error || 'Could not grant access. Please try again.'
+  } finally {
+    accountGrantLoading.value = false
+  }
+}
 
 onMounted(() => {
   loadRows()

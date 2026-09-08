@@ -3,8 +3,12 @@
     <div class="nav__inner">
       <RouterLink class="nav__mark" to="/">
         <span class="nav__mark-glyph">T</span>
-        <span class="nav__mark-word">Tawi Properties</span>
+        <div class="nav__brand-text">
+          <span class="nav__mark-word">TAWI PROPERTIES</span>
+          <span class="nav__tagline">Fast to sell, easy to buy</span>
+        </div>
       </RouterLink>
+      
 
      <nav class="nav__links">
   <RouterLink to="/buy">Buy</RouterLink>
@@ -34,7 +38,7 @@
 
       <div class="nav__actions">
         <RouterLink
-          v-if="authStore.isAuthenticated && authStore.user?.google_id"
+          v-if="authStore.isAuthenticated && authStore.user?.google_id && authStore.user?.can_set_password"
           class="nav__ghost"
           to="/set-password"
         >
@@ -65,7 +69,7 @@
       <RouterLink to="/contact" @click="menuOpen = false">Contact</RouterLink>
       <RouterLink class="nav__cta" to="/list-property" @click="menuOpen = false">List a property</RouterLink>
       <RouterLink
-        v-if="authStore.isAuthenticated && authStore.user?.google_id"
+        v-if="authStore.isAuthenticated && authStore.user?.google_id && authStore.user?.can_set_password"
         to="/set-password"
         @click="menuOpen = false"
       >
@@ -159,6 +163,13 @@ async function handleLogout() {
   font-family: var(--font-display);
   font-size: 16px;
   color: var(--brass-bright);
+  flex-shrink: 0;
+}
+
+.nav__brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
 }
 
 .nav__mark-word {
@@ -167,6 +178,16 @@ async function handleLogout() {
   font-weight: 500;
   color: var(--bone);
   letter-spacing: 0.01em;
+}
+
+.nav__tagline {
+  font-family: var(--font-display);
+  font-size: 13px;
+  /* font-style: italic; */
+  font-weight: 400;
+  color: var(--bone-dim);
+  letter-spacing: 0.01em;
+  margin-top: 2px;
 }
 
 .nav__links {

@@ -28,6 +28,15 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  // Merges partial fields (or a whole fresh user object) into the stored
+  // user — e.g. after POST /set-password returns the updated user so
+  // can_set_password flips to false without needing a full re-login.
+  function updateUser(partialUser) {
+    if (!partialUser) return
+    user.value = { ...user.value, ...partialUser }
+    localStorage.setItem('user', JSON.stringify(user.value))
+  }
+
   function clearSession() {
     token.value = null
     user.value = null
@@ -50,7 +59,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { token, user, isAuthenticated, setSession, clearSession, logout }
+  return { token, user, isAuthenticated, setSession, updateUser, clearSession, logout }
 })
 
 export default useAuthStore

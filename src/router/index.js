@@ -106,6 +106,14 @@ router.beforeEach((to, from, next) => {
     return next({ name: 'login', query: { redirect: to.fullPath } })
   }
 
+  // Set password is a one-time page (see AuthController::setPassword).
+  // Once the backend has recorded a password for this account and no
+  // admin override is active, send the user to forgot-password instead —
+  // that's the supported way to change a password after the first time.
+  if (to.name === 'set-password' && authStore.user && authStore.user.can_set_password === false) {
+    return next({ name: 'forgot-password' })
+  }
+
   return next()
 })
 

@@ -6,15 +6,21 @@
           <span class="auth__mark-glyph">T</span>
         </RouterLink>
         <p class="auth__eyebrow">Account security</p>
-        <h1 class="auth__title">Set a password</h1>
+        <h1 class="auth__title">{{ eligible ? 'Set a password' : 'Password already set' }}</h1>
         <p class="auth__sub">
-          You signed in with Google, so this account has no password yet.
-          Set one below and you'll be able to log in manually too, in
-          addition to "Sign in with Google".
+          {{
+            eligible
+              ? 'You signed in with Google, so this account has no password yet. Set one below and you\'ll be able to log in manually too, in addition to "Sign in with Google".'
+              : 'This page is a one-time setup step, and it looks like you\'ve already used it. To change your password now, use "Forgot password" instead.'
+          }}
         </p>
       </div>
 
-      <form class="auth__form" @submit.prevent="handleSetPassword">
+      <p v-if="!eligible" class="auth__footer" style="margin: 0 0 24px">
+        <RouterLink to="/forgot-password">Go to Forgot password</RouterLink>
+      </p>
+
+      <form v-if="eligible" class="auth__form" @submit.prevent="handleSetPassword">
         <div class="field">
           <label for="password">New password</label>
           <div class="field__input-wrap">
@@ -81,6 +87,13 @@ const submitting = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
 
+// Set password is a one-time action (see AuthController::setPassword) —
+// once used, can_set_password flips to false on the user object until an
+// admin grants a further attempt. The router guard already redirects
+// ineligible users away, but we check here too as defense in depth (e.g.
+// a stale cached user object) and to render the right copy either way.
+const eligible = ref(authStore.user?.can_set_password !== false)
+
 async function handleSetPassword() {
   errorMessage.value = ''
   successMessage.value = ''
@@ -93,18 +106,33 @@ async function handleSetPassword() {
   submitting.value = true
 
   try {
-    await authService.setPassword({
+    const response = await authService.setPassword({
       password: form.password,
       password_confirmation: form.password_confirmation
     })
+
+    // Reflect the updated can_set_password: false immediately, so the
+    // "Set password" nav link disappears without needing a re-login.
+    authStore.updateUser(response.data.user)
 
     successMessage.value = 'Password set! You can now log in manually too.'
 
     // Send them home after a moment — nothing else for them to do here.
     setTimeout(() => router.push({ name: 'home' }), 1500)
   } catch (error) {
-    errorMessage.value =
-      error.response?.data?.error || error.response?.data?.message || 'Something went wrong. Please try again.'
+    // A 403 here means the backend disagrees that this account is still
+    // eligible (e.g. it was used in another tab/device since this page
+    // loaded) — switch to the "already set" view instead of just showing
+    // the raw error.
+    if (error.response?.status === 403) {
+      // Switches the template to the "already set" view, whose own copy
+      // explains this — the form (and this error message) disappear
+      // along with it, so there's nothing further to set here.
+      eligible.value = false
+    } else {
+      errorMessage.value =
+        error.response?.data?.error || error.response?.data?.message || 'Something went wrong. Please try again.'
+    }
     console.error('Set password error:', error)
   } finally {
     submitting.value = false

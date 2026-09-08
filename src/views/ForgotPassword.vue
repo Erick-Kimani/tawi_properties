@@ -10,7 +10,7 @@
         <p class="auth__sub">
           {{
             step === 'request'
-              ? "We'll email you a 6-digit code to reset your password."
+              ? "We'll email you a 6-digit code to reset your password. This also covers changing a password you've already set — Set password is only for the first time."
               : `Enter the code sent to ${form.email} and choose a new password.`
           }}
         </p>

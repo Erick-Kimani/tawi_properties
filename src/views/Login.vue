@@ -125,7 +125,14 @@
           <RouterLink to="/forgot-password" class="field__forgot">Forgot password?</RouterLink>
         </div>
 
-        <p v-if="errorMessage" class="field__error">{{ errorMessage }}</p>
+        <p v-if="errorMessage" class="field__error">
+          {{ errorMessage }}
+          <br />
+          <span class="field__hint">
+            Signed up with Google? Use "Sign in with Google" below, then set a
+            password from your account.
+          </span>
+        </p>
 
         <button type="submit" class="auth__submit" :disabled="submitting">
           {{ submitting ? 'Signing in…' : 'Sign in' }}
@@ -433,6 +440,13 @@ async function handleSubmit() {
   margin: 0;
   font-size: 12px;
   color: #d98b6a;
+}
+
+.field__hint {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--bone-dim);
 }
 
 .field__forgot {

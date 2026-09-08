@@ -51,6 +51,18 @@ export const authService = {
   // logged in already proves account ownership.
   setPassword({ password, password_confirmation }) {
     return apiClient.post('/set-password', { password, password_confirmation })
+  },
+
+  // --- Admin-only: manual "unlock" for a user who's used up their one
+  // /set-password attempt and can't complete forgot-password either
+  // (e.g. no access to that inbox anymore). ---
+
+  findUserByEmail(email) {
+    return apiClient.get('/users/find', { params: { email } })
+  },
+
+  grantSetPasswordAccess(id) {
+    return apiClient.post(`/user/${id}/grant-set-password-access`)
   }
 }
 
