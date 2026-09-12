@@ -266,6 +266,14 @@
       </form>
       </div>
 
+      <MpesaPaymentModal
+        :show="showPaymentModal"
+        :initial-phone="form.phone"
+        @close="showPaymentModal = false"
+        @paid="onPaymentConfirmed"
+        @resume="showPaymentModal = true"
+      />
+
       <div v-if="submitted" class="list-property__success">
         <div class="list-property__success-glyph">✓</div>
         <h2>Submission received</h2>
@@ -289,6 +297,7 @@
 import { reactive, ref, watch, onMounted, computed } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import PropertyMap from '@/components/PropertyMap.vue'
+import MpesaPaymentModal from '@/components/MpesaPaymentModal.vue'
 import { usePropertyTypes } from '@/stores/propertyTypes'
 import { useAuthStore } from '@/stores/auth'
 import propertySubmissionService from '@/services/propertySubmissionService'
@@ -491,7 +500,19 @@ function fullPhone() {
   return local ? `${form.phoneCountryCode} ${local}` : ''
 }
 
-async function handleSubmit() {
+// True while the M-Pesa payment modal is open. The form itself has
+// already been validated by the time this opens — the modal only
+// handles collecting a phone number, sending the STK Push, and waiting
+// for the customer to confirm on their phone.
+const showPaymentModal = ref(false)
+
+// Set once startPayment's checkout_request_id comes back completed —
+// this is what actually authorizes the submission server-side. See
+// PropertySubmissionController::store, which re-verifies this payment
+// rather than trusting that the modal reaching 'paid' means it's real.
+const paymentCheckoutRequestId = ref('')
+
+function handleSubmit() {
   error.value = ''
   needsLogin.value = false
 
@@ -509,10 +530,25 @@ async function handleSubmit() {
     return
   }
 
+  // Form is valid — open the payment modal instead of submitting
+  // directly. Actual submission happens in onPaymentConfirmed once the
+  // fee is paid.
+  showPaymentModal.value = true
+}
+
+// Called by MpesaPaymentModal's @paid event once its own polling sees
+// the payment reach 'completed'. Submits the actual property-submission
+// request, including the checkout_request_id the backend uses to look
+// up and consume that payment.
+async function onPaymentConfirmed({ checkoutRequestId }) {
+  paymentCheckoutRequestId.value = checkoutRequestId
+  showPaymentModal.value = false
   submitting.value = true
+  error.value = ''
 
   try {
     const payload = new FormData()
+    payload.append('checkout_request_id', checkoutRequestId)
     payload.append('listing_type', form.intent) // 'sale' | 'rent' — seller's intent
     payload.append('type', form.type) // property category, e.g. "Apartments"
     payload.append('full_name', form.fullName)
@@ -536,7 +572,7 @@ async function handleSubmit() {
       needsLogin.value = true
     } else {
       error.value = err.response?.data?.message
-        || 'Something went wrong submitting your property. Please try again.'
+        || 'Your payment went through, but something went wrong submitting your property. Please contact us with your M-Pesa message so we can complete it manually.'
     }
   } finally {
     submitting.value = false
