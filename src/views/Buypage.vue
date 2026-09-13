@@ -125,6 +125,10 @@ async function loadListings() {
       priceRange: s.price_range,
       location: s.location,
       photo: s.photo_url,
+      // Pre-assembled 0–3 photo URLs from the backend — see
+      // PropertySubmission::getPhotoUrlsAttribute. Feeds the carousel
+      // in PropertyEnquiryModal.vue.
+      photos: s.photo_urls,
       lat: s.latitude !== undefined && s.latitude !== null ? Number(s.latitude) : null,
       lng: s.longitude !== undefined && s.longitude !== null ? Number(s.longitude) : null,
     }))

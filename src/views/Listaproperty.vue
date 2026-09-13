@@ -233,15 +233,33 @@
         </div>
 
         <div class="field">
-          <label for="photo">
-            Property photo <span class="field__optional">(optional)</span>
+          <label :for="`photo-0`">
+            Property photos <span class="field__optional">(optional, up to 3)</span>
           </label>
-          <input id="photo" type="file" accept="image/*" @change="handlePhoto" />
-          <div class="photo-preview" v-if="form.photo">
-            <img :src="form.photo" alt="Property preview" />
-            <button type="button" class="photo-preview__remove" @click="form.photo = ''">
-              Remove photo
-            </button>
+          <p class="field__hint">
+            The first photo is used as the listing's cover image; all three
+            appear in the photo carousel buyers and tenants see.
+          </p>
+          <div class="photo-slots">
+            <div class="photo-slot" v-for="(slot, index) in form.photos" :key="index">
+              <div class="photo-preview" v-if="slot">
+                <img :src="slot" :alt="`Property photo ${index + 1} preview`" />
+                <button type="button" class="photo-preview__remove" @click="removePhoto(index)">
+                  Remove
+                </button>
+              </div>
+              <label v-else class="photo-slot__upload" :for="`photo-${index}`">
+                <span class="photo-slot__upload-plus">+</span>
+                <span>Photo {{ index + 1 }}{{ index === 0 ? '' : ' (optional)' }}</span>
+              </label>
+              <input
+                :id="`photo-${index}`"
+                class="photo-slot__input"
+                type="file"
+                accept="image/*"
+                @change="handlePhoto(index, $event)"
+              />
+            </div>
           </div>
         </div>
 
@@ -406,14 +424,15 @@ function blankForm() {
     priceRange: '',
     location: '',
     description: '',
-    photo: '' // base64 preview only, shown in the template — the real
-               // File object lives in photoFile below and is what
-               // actually gets uploaded.
+    // Up to 3 base64 preview strings only, shown in the template — the
+    // real File objects live in photoFiles below and are what actually
+    // get uploaded. Empty string = that slot is unfilled.
+    photos: ['', '', '']
   }
 }
 
 const form = reactive(blankForm())
-const photoFile = ref(null) // the actual File selected via the input, or null
+const photoFiles = ref([null, null, null]) // the actual File per slot, or null
 const pin = ref(null) // { lat, lng } | null — set via the PropertyMap picker
 const submitting = ref(false)
 const submitted = ref(false)
@@ -475,19 +494,24 @@ onMounted(() => {
   router.replace({ path: route.path, query: cleanQuery })
 })
 
-function handlePhoto(event) {
+function handlePhoto(index, event) {
   const file = event.target.files && event.target.files[0]
   if (!file) return
 
-  photoFile.value = file
+  photoFiles.value[index] = file
 
   // Base64 preview only — for the <img> in the template. The upload
-  // itself uses photoFile (the raw File), not this string.
+  // itself uses photoFiles (the raw Files), not this string.
   const reader = new FileReader()
   reader.onload = () => {
-    form.photo = reader.result
+    form.photos[index] = reader.result
   }
   reader.readAsDataURL(file)
+}
+
+function removePhoto(index) {
+  form.photos[index] = ''
+  photoFiles.value[index] = null
 }
 
 // Combines the dropdown's country code with the typed local number into
@@ -557,7 +581,12 @@ async function onPaymentConfirmed({ checkoutRequestId }) {
     payload.append('price_range', form.priceRange)
     payload.append('location', form.location)
     if (form.description) payload.append('description', form.description)
-    if (photoFile.value) payload.append('photo', photoFile.value)
+    // Field names match the backend's validation: `photo`, `photo_2`,
+    // `photo_3` — see PropertySubmissionController::store.
+    const photoFieldNames = ['photo', 'photo_2', 'photo_3']
+    photoFiles.value.forEach((file, index) => {
+      if (file) payload.append(photoFieldNames[index], file)
+    })
     if (pin.value) {
       payload.append('latitude', pin.value.lat)
       payload.append('longitude', pin.value.lng)
@@ -581,7 +610,7 @@ async function onPaymentConfirmed({ checkoutRequestId }) {
 
 function resetForm() {
   Object.assign(form, blankForm())
-  photoFile.value = null
+  photoFiles.value = [null, null, null]
   pin.value = null
   submitted.value = false
   error.value = ''
@@ -1021,28 +1050,92 @@ function resetForm() {
   box-shadow: 0 0 0 1px rgba(237, 231, 218, 0.15);
 }
 
-.photo-preview {
-  margin-top: 4px;
-  display: flex;
-  align-items: center;
+.photo-slots {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
+  margin-top: 4px;
+}
+
+.photo-slot {
+  position: relative;
+}
+
+.photo-slot__input {
+  /* The visible control is the label below (so all 3 slots look alike
+     whether filled or not) — the native input just sits invisibly on
+     top of it, still fully clickable/keyboard-accessible. */
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.photo-slot__upload {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 92px;
+  border: 1px dashed rgba(237, 231, 218, 0.3);
+  border-radius: 8px;
+  color: var(--bone-dim);
+  font-size: 12px;
+  text-align: center;
+  padding: 8px;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.photo-slot:hover .photo-slot__upload {
+  border-color: var(--brass);
+  color: var(--bone);
+}
+
+.photo-slot__upload-plus {
+  font-size: 20px;
+  line-height: 1;
+  color: var(--brass-bright);
+}
+
+.photo-preview {
+  position: relative;
+  height: 92px;
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .photo-preview img {
-  width: 56px;
-  height: 56px;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .photo-preview__remove {
-  background: none;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(20, 23, 28, 0.75);
   border: none;
   color: #d98b6a;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 11px;
   cursor: pointer;
-  padding: 0;
+  padding: 5px;
+}
+
+@media (max-width: 480px) {
+  .photo-slots {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .photo-slot__upload,
+  .photo-preview {
+    height: 76px;
+  }
 }
 
 .field__error {

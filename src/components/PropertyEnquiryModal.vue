@@ -154,15 +154,13 @@
  * (PropertyMapPage.vue) centered on this specific listing's pin via
  * ?focus=<id>.
  *
- * NOTE ON PHOTOS: PropertySubmission currently stores a single
- * `photo_path` — one photo per listing (see the form in
- * Listaproperty.vue and the `store()` validation in
- * PropertySubmissionController.php, both single-file). This component
- * is built to show a real carousel of `listing.photos` (an array) the
- * moment the backend supports multiple photos per submission; until
- * then it falls back to a single-image "carousel" (no arrows/thumbs,
- * since there's only one frame). See the note I'll leave in chat for
- * what a multi-photo backend change would involve.
+ * NOTE ON PHOTOS: PropertySubmission now stores up to three photos
+ * (`photo_path`, `photo_path_2`, `photo_path_3` — see the form in
+ * Listaproperty.vue and validation in PropertySubmissionController.php).
+ * The API exposes them pre-assembled as `listing.photos` (an array of
+ * 0–3 URLs, see PropertySubmission::getPhotoUrlsAttribute). When a
+ * listing has no photos at all, this falls back to a single generic
+ * placeholder frame (no arrows/thumbs, since there's only one frame).
  *
  * NOTE ON GUEST CONTACT MASKING: the masked phone / missing email you
  * see here for guests is not just a display trick — the public
@@ -207,24 +205,16 @@ const fallbackImage = '/images/Picture2.jpg'
 const dialogEl = ref(null)
 const activeIndex = ref(0)
 
-// ---------------------------------------------------------------------
-// TEMP — PREVIEW ONLY. Delete this DEMO_PHOTOS array, and the two lines
-// marked below in `images`, once you're done looking at the carousel.
-// It stands in for real multi-photo data until the backend supports
-// more than one photo per submission (see the note above).
-const DEMO_PHOTOS = [
-  'https://picsum.photos/seed/tawi-listing-a/900/650',
-  'https://picsum.photos/seed/tawi-listing-b/900/650',
-  'https://picsum.photos/seed/tawi-listing-c/900/650',
-]
-// ---------------------------------------------------------------------
-
+// `listing.photos` is the array the API assembles from up to three
+// uploaded photos (see the note above). Falls back to the single
+// `photo` field (older data / just in case), then to a generic
+// placeholder if the listing has no photos at all.
 const images = computed(() => {
   if (!props.listing) return [fallbackImage]
   if (Array.isArray(props.listing.photos) && props.listing.photos.length) {
     return props.listing.photos
   }
-  return DEMO_PHOTOS // TEMP — swap back to: [props.listing.photo || fallbackImage]
+  return [props.listing.photo || fallbackImage]
 })
 
 function prevImage() {
