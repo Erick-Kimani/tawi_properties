@@ -9,6 +9,7 @@
       @keydown.left="prevImage"
       @keydown.right="nextImage"
     >
+      <div class="enquiry-modal-group" :class="{ 'enquiry-modal-group--with-map': showMap }">
       <div
         class="enquiry-modal"
         role="dialog"
@@ -128,17 +129,52 @@
             No further description was provided for this listing.
           </p>
 
-          <RouterLink
+          <button
             v-if="hasPin"
+            type="button"
             class="enquiry-modal__map-link"
-            :to="mapLink"
+            @click="showMap = !showMap"
           >
-            View exact location on map →
-          </RouterLink>
+            {{ showMap ? 'Hide map ↑' : 'View exact location on map →' }}
+          </button>
           <p v-else class="enquiry-modal__map-link enquiry-modal__map-link--disabled">
             No pinned location for this listing
           </p>
         </div>
+      </div>
+
+      <Transition name="enquiry-modal__map-fade">
+        <div
+          v-if="showMap && hasPin"
+          class="enquiry-modal__map-panel"
+          role="dialog"
+          aria-label="Exact property location"
+        >
+          <button
+            type="button"
+            class="enquiry-modal__map-close"
+            aria-label="Close map"
+            @click="showMap = false"
+          >
+            &times;
+          </button>
+
+          <div class="enquiry-modal__map-shell">
+            <PropertyMap
+              mode="display"
+              :markers="mapMarkers"
+              :searchable="false"
+              :legend="false"
+              height="100%"
+              :zoom="15"
+            />
+          </div>
+
+          <RouterLink class="enquiry-modal__map-fulllink" :to="mapLink">
+            Open full map ↗
+          </RouterLink>
+        </div>
+      </Transition>
       </div>
     </div>
   </Teleport>
@@ -178,6 +214,7 @@ import { computed, ref, watch, nextTick } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { resolvePinCategory, resolvePinColor, pinLegendLabel, DEFAULT_PIN_COLOR } from '@/utils/propertyPinColors'
+import PropertyMap from '@/components/PropertyMap.vue'
 
 const props = defineProps({
   // { id, type, listingType, fullName, email, phone, priceRange,
@@ -204,6 +241,9 @@ const loginLink = computed(() => ({ path: '/login', query: { redirect: route.pat
 const fallbackImage = '/images/Picture2.jpg'
 const dialogEl = ref(null)
 const activeIndex = ref(0)
+// Toggled by "View exact location on map" — opens the map panel beside
+// the modal instead of navigating away to the full-page map.
+const showMap = ref(false)
 
 // `listing.photos` is the array the API assembles from up to three
 // uploaded photos (see the note above). Falls back to the single
@@ -233,6 +273,7 @@ watch(
   () => props.listing,
   (listing) => {
     activeIndex.value = 0
+    showMap.value = false
     if (listing) nextTick(() => dialogEl.value?.focus())
   }
 )
@@ -246,6 +287,25 @@ const categoryLabel = computed(
 const hasPin = computed(
   () => typeof props.listing?.lat === 'number' && typeof props.listing?.lng === 'number'
 )
+
+// Single-pin marker for the map panel — reuses the same shape PropertyMap
+// already expects in 'display' mode (see PropertyMap.vue), so the pin
+// gets the same category color and popup styling as the browse map.
+const mapMarkers = computed(() => {
+  if (!hasPin.value) return []
+  return [
+    {
+      id: props.listing.id,
+      lat: props.listing.lat,
+      lng: props.listing.lng,
+      title: props.listing.location,
+      subtitle: props.listing.fullName,
+      price: props.listing.priceRange,
+      type: props.listing.type,
+      listingType: props.listing.listingType,
+    },
+  ]
+})
 
 const mapLink = computed(() => {
   if (!props.listing) return '/property-map'
@@ -271,11 +331,33 @@ const mapLink = computed(() => {
   padding: 24px;
 }
 
+/* Groups the detail modal with the (optional) map panel so both can be
+   centered and sized together — see .enquiry-modal__map-panel below.
+   --em-h is the shared, fixed height both panels use so the map panel
+   fills exactly as much vertical space as the details modal instead of
+   guessing at it via flex-stretch (which the map's internal percentage
+   heights can't reliably resolve). */
+.enquiry-modal-group {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 20px;
+  width: 100%;
+  max-width: 700px;
+  --em-h: min(620px, 76vh);
+  transition: max-width 0.25s ease;
+}
+
+.enquiry-modal-group--with-map {
+  max-width: 1100px;
+}
+
 .enquiry-modal {
   position: relative;
   width: 100%;
-  max-width: 980px;
-  max-height: 88vh;
+  max-width: 700px;
+  height: var(--em-h);
   display: flex;
   border-radius: 20px;
   overflow: hidden;
@@ -306,7 +388,11 @@ const mapLink = computed(() => {
   background: rgba(10, 12, 16, 0.8);
 }
 
-/* --- Left: photo carousel ------------------------------------------ */
+/* --- Left: photo carousel -------------------------------------------
+   Kept as a rectangular left/right split (like the original) rather
+   than a tall portrait stack, so the modal itself stays a fixed,
+   non-scrolling height — the map, when opened, appears as its own
+   panel beside this one instead of stretching it taller. */
 .enquiry-modal__gallery {
   position: relative;
   flex: 1 1 52%;
@@ -434,7 +520,7 @@ const mapLink = computed(() => {
   flex: 1 1 48%;
   min-width: 0;
   overflow-y: auto;
-  padding: 32px 28px;
+  padding: 28px 26px;
 
   /* Frosted-glass panel: translucent fill + blur of whatever sits
      behind the modal (the dimmed backdrop), plus a soft inner edge so
@@ -552,9 +638,14 @@ const mapLink = computed(() => {
 
 .enquiry-modal__map-link {
   display: inline-block;
+  font-family: inherit;
   font-size: 13.5px;
   font-weight: 600;
   color: var(--brass-bright, #c8a06a);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
   text-decoration: none;
 }
 
@@ -569,17 +660,119 @@ const mapLink = computed(() => {
   font-style: italic;
 }
 
-/* --- Responsive: stack on narrow screens ---------------------------- */
-@media (max-width: 720px) {
-  .enquiry-modal {
+/* --- Map panel: opens beside the modal when "View exact location on
+       map" is clicked, reusing PropertyMap in 'display' mode with a
+       single pin (same look as the browse map / List a property's
+       picker card). Fixed to the same height as the details modal
+       (--em-h) so the map fills the whole panel rather than leaving
+       dead space below it. --------------------------------------------------- */
+.enquiry-modal__map-panel {
+  position: relative;
+  flex: 1 1 420px;
+  max-width: 440px;
+  height: var(--em-h);
+  border-radius: 20px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: rgba(234, 229, 216, 0.06);
+  border: 1px solid rgba(234, 229, 216, 0.14);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+}
+
+.enquiry-modal__map-shell {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+}
+
+/* PropertyMap.vue's own height prop only reaches its innermost canvas —
+   the wrapper elements in between have no height of their own, so they
+   need to be told to fill this shell explicitly. The shell now has a
+   real, fixed pixel height (from --em-h via flexbox), so these
+   percentages resolve correctly instead of collapsing to the map's
+   280px minimum. */
+.enquiry-modal__map-shell :deep(.property-map),
+.enquiry-modal__map-shell :deep(.property-map__stage) {
+  height: 100%;
+}
+
+.enquiry-modal__map-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 3;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(10, 12, 16, 0.55);
+  color: var(--bone, #eae5d8);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.enquiry-modal__map-close:hover {
+  background: rgba(10, 12, 16, 0.8);
+}
+
+.enquiry-modal__map-fulllink {
+  flex-shrink: 0;
+  display: block;
+  text-align: center;
+  padding: 12px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--brass-bright, #c8a06a);
+  text-decoration: none;
+  background: var(--slate, #1c2128);
+  border-top: 1px solid rgba(234, 229, 216, 0.14);
+}
+
+.enquiry-modal__map-fulllink:hover {
+  text-decoration: underline;
+}
+
+.enquiry-modal__map-fade-enter-active,
+.enquiry-modal__map-fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.enquiry-modal__map-fade-enter-from,
+.enquiry-modal__map-fade-leave-to {
+  opacity: 0;
+  transform: translateX(-12px);
+}
+
+/* --- Responsive: stack everything on narrow screens ------------------ */
+@media (max-width: 1000px) {
+  .enquiry-modal-group,
+  .enquiry-modal-group--with-map {
     flex-direction: column;
+    max-width: 700px;
     max-height: 92vh;
     overflow-y: auto;
   }
 
+  .enquiry-modal__map-panel {
+    max-width: none;
+    flex: none;
+    height: 320px;
+  }
+}
+
+@media (max-width: 720px) {
+  .enquiry-modal {
+    flex-direction: column;
+  }
+
   .enquiry-modal__gallery {
     flex: none;
-    height: 260px;
+    height: 240px;
   }
 
   .enquiry-modal__body {
