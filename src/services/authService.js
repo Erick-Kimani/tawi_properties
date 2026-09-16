@@ -1,11 +1,18 @@
-import apiClient from './api'
+import apiClient, { ensureCsrfCookie } from './api'
 
 export const authService = {
-  register(userData) {
+  async register(userData) {
+    await ensureCsrfCookie()
     return apiClient.post('/register', userData)
   },
 
-  login(credentials) {
+  // CSRF / HTTPONLY-COOKIE AUTH CHANGE: primes the XSRF-TOKEN cookie
+  // first. main.js already does this once on app boot, but doing it
+  // again here too is cheap (ensureCsrfCookie() reuses the in-flight/
+  // completed request) and makes login resilient even if boot-time
+  // priming failed or the cookie expired.
+  async login(credentials) {
+    await ensureCsrfCookie()
     return apiClient.post('/login', credentials)
   },
 
@@ -40,15 +47,16 @@ export const authService = {
   // Logs in (or silently registers, if this Google account has never
   // been seen before) using an OAuth access_token obtained from Google
   // Identity Services — see services/googleAuth.js.
-  googleAuth(accessToken) {
+  async googleAuth(accessToken) {
+    await ensureCsrfCookie()
     return apiClient.post('/auth/google', { access_token: accessToken })
   },
 
   // Lets an already-logged-in user (typically a Google-only account that
   // has never had a real password) set one, so manual email/password
-  // login works for their account too. Requires the auth token — no
-  // email/code step, unlike forgotPassword/resetPassword, since being
-  // logged in already proves account ownership.
+  // login works for their account too. Requires an authenticated session
+  // — no email/code step, unlike forgotPassword/resetPassword, since
+  // being logged in already proves account ownership.
   setPassword({ password, password_confirmation }) {
     return apiClient.post('/set-password', { password, password_confirmation })
   },
