@@ -47,9 +47,13 @@ export const authService = {
   // Logs in (or silently registers, if this Google account has never
   // been seen before) using an OAuth access_token obtained from Google
   // Identity Services — see services/googleAuth.js.
-  async googleAuth(accessToken) {
+  // `extras` carries accepted_terms / accepted_terms_version when this
+  // call is coming from the sign-up page. Sign-in from the login page
+  // sends nothing extra; the backend only insists on an acceptance when
+  // the Google account is new and a user row is about to be created.
+  async googleAuth(accessToken, extras = {}) {
     await ensureCsrfCookie()
-    return apiClient.post('/auth/google', { access_token: accessToken })
+    return apiClient.post('/auth/google', { access_token: accessToken, ...extras })
   },
 
   // Lets an already-logged-in user (typically a Google-only account that

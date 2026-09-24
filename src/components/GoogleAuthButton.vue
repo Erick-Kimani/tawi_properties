@@ -28,6 +28,18 @@ const props = defineProps({
   disabled: {
     type: Boolean,
     default: false
+  },
+  // Only the sign-up page passes these. Google sign-in can silently
+  // register a brand-new account, so the backend refuses to create one
+  // without an acceptance — an existing user signing in doesn't need
+  // them, which is why they're optional here rather than required.
+  acceptedTerms: {
+    type: Boolean,
+    default: false
+  },
+  termsVersion: {
+    type: String,
+    default: ''
   }
 })
 
@@ -42,7 +54,12 @@ async function handleClick() {
 
   try {
     const accessToken = await requestGoogleAccessToken()
-    const response = await authService.googleAuth(accessToken)
+    const response = await authService.googleAuth(
+      accessToken,
+      props.acceptedTerms
+        ? { accepted_terms: true, accepted_terms_version: props.termsVersion }
+        : {}
+    )
     emit('success', response.data)
   } catch (error) {
     console.error('Google sign-in error:', error)

@@ -263,6 +263,18 @@
           </div>
         </div>
 
+        <!-- Per-listing, not per-account: this declaration is about *this*
+             property, so it's asked again for every submission. Placed
+             above the fee, because agreeing to the terms is what the
+             payment is committing to. -->
+        <TermsConsent
+          v-model="acceptedTerms"
+          audience="seller"
+          require-scroll
+          :disabled="submitting"
+          :flagged="termsFlagged"
+        />
+
         <p v-if="error" class="field__error">{{ error }}</p>
         <div v-if="needsLogin" class="list-property__login-prompt">
           <p>
@@ -316,6 +328,8 @@ import { reactive, ref, watch, onMounted, computed } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import PropertyMap from '@/components/PropertyMap.vue'
 import MpesaPaymentModal from '@/components/MpesaPaymentModal.vue'
+import TermsConsent from '@/components/TermsConsent.vue'
+import { TERMS_VERSION } from '@/data/terms'
 import { usePropertyTypes } from '@/stores/propertyTypes'
 import { useAuthStore } from '@/stores/auth'
 import propertySubmissionService from '@/services/propertySubmissionService'
@@ -444,6 +458,12 @@ const error = ref('')
 const needsLogin = ref(false)
 const lastSubmittedName = ref('')
 
+// Seller terms, accepted per listing. Deliberately NOT remembered between
+// submissions — each listing carries its own declaration about its own
+// property, and resetForm() clears it again below.
+const acceptedTerms = ref(false)
+const termsFlagged = ref(false)
+
 // Keep the selected type valid once the real API list arrives (it may
 // differ from the fallback options used while loading).
 watch(propertyTypes, (types) => {
@@ -554,6 +574,15 @@ function handleSubmit() {
     return
   }
 
+  // Checked before the payment modal opens, never after: nobody should be
+  // able to pay a listing fee and only then find out what they're agreeing
+  // to. The backend enforces the same rule at submission time.
+  if (!acceptedTerms.value) {
+    termsFlagged.value = true
+    error.value = 'Please read and accept the seller terms before paying the listing fee.'
+    return
+  }
+
   // Form is valid — open the payment modal instead of submitting
   // directly. Actual submission happens in onPaymentConfirmed once the
   // fee is paid.
@@ -573,6 +602,11 @@ async function onPaymentConfirmed({ checkoutRequestId }) {
   try {
     const payload = new FormData()
     payload.append('checkout_request_id', checkoutRequestId)
+    // FormData has no booleans — '1' is what Laravel's `accepted` rule
+    // expects. Written to terms_acceptances inside the same transaction
+    // that creates the submission, and linked to it.
+    payload.append('accepted_terms', '1')
+    payload.append('accepted_terms_version', TERMS_VERSION)
     payload.append('listing_type', form.intent) // 'sale' | 'rent' — seller's intent
     payload.append('type', form.type) // property category, e.g. "Apartments"
     payload.append('full_name', form.fullName)
@@ -615,6 +649,9 @@ function resetForm() {
   submitted.value = false
   error.value = ''
   needsLogin.value = false
+  // A fresh listing is a fresh declaration — make them tick it again.
+  acceptedTerms.value = false
+  termsFlagged.value = false
 }
 </script>
 

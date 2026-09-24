@@ -71,6 +71,13 @@
           <p v-if="mismatch" class="field__error">Passwords don't match.</p>
         </div>
 
+        <TermsConsent
+          v-model="acceptedTerms"
+          audience="general"
+          :disabled="submitting"
+          :flagged="termsFlagged"
+        />
+
         <p v-if="errorMessage" class="field__error">{{ errorMessage }}</p>
 
         <button type="submit" class="auth__submit" :disabled="submitting">
@@ -80,12 +87,20 @@
 
       <div class="auth__divider"><span>or</span></div>
 
+      <!-- Google sign-up creates an account too, so it's gated on the same
+           checkbox — otherwise there'd be a one-click route around the
+           terms every other new user has to accept. -->
       <GoogleAuthButton
         label="Sign up with Google"
-        :disabled="submitting"
+        :accepted-terms="acceptedTerms"
+        :terms-version="TERMS_VERSION"
+        :disabled="submitting || !acceptedTerms"
         @success="handleGoogleSuccess"
         @error="handleGoogleError"
       />
+      <p v-if="!acceptedTerms" class="auth__google-note">
+        Accept the terms above to sign up with Google.
+      </p>
 
       <p class="auth__footer">
         Already have an account?
@@ -101,6 +116,8 @@ import { useRouter } from 'vue-router'
 import authService from '@/services/authService'
 import { useAuthStore } from '@/stores/auth'
 import GoogleAuthButton from '@/components/GoogleAuthButton.vue'
+import TermsConsent from '@/components/TermsConsent.vue'
+import { TERMS_VERSION } from '@/data/terms'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -116,6 +133,14 @@ const showPassword = ref(false)
 const showConfirm = ref(false)
 const submitting = ref(false)
 const errorMessage = ref('')
+
+// General (buyer/tenant) terms, accepted once per account at sign-up.
+// The backend validates this too — see AuthController::register, which
+// won't create a user without it. This is the friendly half of that.
+const acceptedTerms = ref(false)
+// Turns the consent box red only after someone has actually tried to
+// submit without it, rather than greeting them with an error.
+const termsFlagged = ref(false)
 
 const mismatch = computed(() =>
   form.confirmPassword.length > 0 && form.password !== form.confirmPassword
@@ -133,6 +158,11 @@ function handleGoogleError(message) {
 async function handleSubmit() {
   if (form.password !== form.confirmPassword) return
 
+  if (!acceptedTerms.value) {
+    termsFlagged.value = true
+    return
+  }
+
   errorMessage.value = ''
   submitting.value = true
 
@@ -141,7 +171,12 @@ async function handleSubmit() {
       name: form.fullName,
       email: form.email,
       password: form.password,
-      password_confirmation: form.confirmPassword
+      password_confirmation: form.confirmPassword,
+      // Recorded server-side in terms_acceptances, in the same
+      // transaction that creates the account — so there's never a user
+      // row without a matching acceptance row.
+      accepted_terms: true,
+      accepted_terms_version: TERMS_VERSION
     })
 
     // Store the authentication token and update the reactive auth state
@@ -336,6 +371,13 @@ async function handleSubmit() {
 .auth__submit:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.auth__google-note {
+  margin: 10px 0 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--bone-dim);
 }
 
 .auth__footer {

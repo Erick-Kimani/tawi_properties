@@ -77,7 +77,26 @@
         <p class="footer__heading">List with us</p>
         <RouterLink to="/list-property">List a property</RouterLink>
       </nav>
+
+      <nav class="footer__col">
+        <p class="footer__heading">Terms</p>
+        <!-- Read-only here: nothing to accept, so no checkbox. Anyone can
+             read both documents without an account, which is the point. -->
+        <button type="button" class="footer__link-btn" @click="openTerms = 'general'">
+          Buyer &amp; tenant terms
+        </button>
+        <button type="button" class="footer__link-btn" @click="openTerms = 'seller'">
+          Seller terms
+        </button>
+      </nav>
     </div>
+
+    <TermsDrawer
+      :show="openTerms !== null"
+      :audience="openTerms || 'general'"
+      read-only
+      @close="openTerms = null"
+    />
 
     <div class="footer__divider" aria-hidden="true">
       <svg viewBox="0 0 240 16" class="footer__chevrons">
@@ -106,10 +125,13 @@
 import { RouterLink, useRouter } from 'vue-router'
 import { ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import TermsDrawer from '@/components/TermsDrawer.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const loggingOut = ref(false)
+// null = closed; otherwise the audience whose terms are open.
+const openTerms = ref(null)
 const year = new Date().getFullYear()
 
 async function handleLogout() {
@@ -286,7 +308,8 @@ async function handleLogout() {
 }
 
 .footer__col a,
-.footer__logout {
+.footer__logout,
+.footer__link-btn {
   color: var(--bone-dim);
   text-decoration: none;
   font-size: 14px;
@@ -295,11 +318,13 @@ async function handleLogout() {
 }
 
 .footer__col a:hover,
-.footer__logout:hover {
+.footer__logout:hover,
+.footer__link-btn:hover {
   color: var(--bone);
 }
 
-.footer__logout {
+.footer__logout,
+.footer__link-btn {
   background: none;
   border: none;
   font-family: inherit;
