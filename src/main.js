@@ -11,7 +11,6 @@ import { useAuthStore } from '@/stores/auth'
 const app = createApp(App)
 
 app.use(createPinia())
-app.use(router)
 
 // CSRF / HTTPONLY-COOKIE AUTH CHANGE
 // --------------------------------------------------------------------
@@ -23,14 +22,24 @@ app.use(router)
 //      session cookie from a previous visit (authStore.checkAuth), since
 //      auth state can no longer be read synchronously out of
 //      localStorage the way the old bearer-token version did.
-// Both run before mount so the router's first navigation guard sees
-// accurate isAuthenticated/user state instead of momentarily treating
-// an already-logged-in user as logged out.
+//
+// IMPORTANT: app.use(router) is deliberately NOT called until after this
+// await, not just app.mount(). Vue Router starts resolving the current
+// URL — including running beforeEach — the moment it's installed via
+// app.use(), independent of app.mount(). Installing it early (as this
+// used to) meant a hard refresh of a protected route (e.g. /admin) had
+// its route guard read authStore.isAuthenticated before checkAuth()'s
+// network request had any chance to complete, so it always saw the
+// ref's default `false` and redirected to /login — even for a perfectly
+// valid session. This was intermittent (a straight race between a
+// network round-trip and a synchronous guard check) rather than
+// consistently broken, which is why it was so confusing to reproduce.
 async function bootstrap() {
   const authStore = useAuthStore()
 
   await Promise.allSettled([ensureCsrfCookie(), authStore.checkAuth()])
 
+  app.use(router)
   app.mount('#app')
 }
 
