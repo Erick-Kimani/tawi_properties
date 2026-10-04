@@ -7,6 +7,7 @@ import ForgotPassword from '../views/ForgotPassword.vue'
 import SetPassword from '../views/Setpassword.vue'
 import Admin from '../views/Admin.vue'
 import Listaproperty from '../views/Listaproperty.vue'
+import MyListings from '../views/MyListings.vue'
 import PropertyMapPage from '../views/PropertyMapPage.vue'
 import CategoryListing from '../views/Categorylisting.vue'
 import BuyPage from '../views/Buypage.vue'
@@ -52,6 +53,12 @@ const router = createRouter({
       path: '/list-property',
       name: 'list-property',
       component: Listaproperty,
+    },
+    {
+      path: '/my-listings',
+      name: 'my-listings',
+      component: MyListings,
+      meta: { requiresAuth: true },
     },
     {
       // PropertyMapPage.vue decides picker vs. browse mode itself, based

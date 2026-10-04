@@ -191,6 +191,130 @@
       <p>No submissions match this filter yet.</p>
     </div>
 
+    <section class="admin__messages" ref="editRequestsRef">
+      <div class="admin__counties-head">
+        <div>
+          <h2 class="admin__counties-title">Edit requests</h2>
+          <p class="admin__counties-sub">
+            Sellers can request up to two changes per listing -- property type,
+            description, map position, or phone. Nothing here goes live until
+            you approve it.
+          </p>
+        </div>
+        <div class="admin__stats admin__counties-stats">
+          <div class="stat">
+            <span class="stat__value">{{ editRequests.length }}</span>
+            <span class="stat__label">{{ editRequestStatusFilter === 'pending' ? 'Pending' : 'Shown' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin__filters" style="margin-bottom: 16px;">
+        <button
+          v-for="f in editRequestFilters"
+          :key="f.value"
+          class="filter-pill"
+          :class="{ 'filter-pill--active': editRequestStatusFilter === f.value }"
+          @click="changeEditRequestFilter(f.value)"
+        >
+          {{ f.label }}
+        </button>
+      </div>
+
+      <p v-if="editRequestsLoading" class="admin__status-text">Loading edit requests…</p>
+      <p v-if="editRequestsError" class="admin__status-text admin__status-text--error">
+        {{ editRequestsError }}
+      </p>
+
+      <div class="admin__table card-surface" v-if="editRequests.length">
+        <table>
+          <thead>
+            <tr>
+              <th>Listing</th>
+              <th>Requested by</th>
+              <th>Changes</th>
+              <th>Reason</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="req in editRequests" :key="req.id">
+              <td>{{ req.submission?.location || req.submission?.type || '—' }}</td>
+              <td>
+                <div class="contact">
+                  <span>{{ req.requester?.name }}</span>
+                  <span class="contact__phone">{{ req.requester?.email }}</span>
+                </div>
+              </td>
+              <td class="admin__message-text">
+                <ul class="edit-request__changes">
+                  <li v-if="req.type"><strong>Type:</strong> {{ req.type }}</li>
+                  <li v-if="req.description"><strong>Description:</strong> {{ req.description }}</li>
+                  <li v-if="req.latitude != null">
+                    <strong>Map position:</strong> {{ req.latitude.toFixed(5) }}, {{ req.longitude.toFixed(5) }}
+                  </li>
+                  <li v-if="req.phone"><strong>Phone:</strong> {{ req.phone }}</li>
+                </ul>
+              </td>
+              <td class="admin__message-text">{{ req.seller_note }}</td>
+              <td>
+                <span class="status-pill" :class="'status-pill--' + editRequestStatusClass(req.status)">
+                  {{ req.status }}
+                </span>
+                <p v-if="req.admin_note" class="edit-request__admin-note">{{ req.admin_note }}</p>
+              </td>
+              <td class="admin__actions">
+                <template v-if="req.status === 'pending'">
+                  <button
+                    class="action action--feature"
+                    :disabled="editRequestActionId === req.id"
+                    @click="handleApproveEditRequest(req.id)"
+                  >
+                    {{ editRequestActionId === req.id ? 'Approving…' : 'Approve' }}
+                  </button>
+                  <button class="action action--delete" @click="openRejectModal(req)">
+                    Reject
+                  </button>
+                </template>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="admin__empty card-surface" v-else-if="!editRequestsLoading">
+        <p>No {{ editRequestStatusFilter === 'all' ? '' : editRequestStatusFilter }} edit requests.</p>
+      </div>
+    </section>
+
+    <!-- Reject modal -- reuses the same visual pattern as the contact-message
+         reply modal above (reply-modal__backdrop / reply-modal classes). -->
+    <div v-if="rejectTarget" class="reply-modal__backdrop" @click.self="closeRejectModal">
+      <div class="reply-modal" role="dialog" aria-modal="true" aria-labelledby="reject-modal-title">
+        <h3 id="reject-modal-title">Reject edit request</h3>
+        <p class="reply-modal__original">{{ rejectTarget.seller_note }}</p>
+
+        <textarea
+          v-model="rejectNote"
+          rows="4"
+          placeholder="Explain why this request is being rejected (the seller will see this)…"
+          :disabled="rejecting"
+        ></textarea>
+
+        <p v-if="rejectError" class="field__error">{{ rejectError }}</p>
+
+        <div class="reply-modal__actions">
+          <button type="button" class="btn btn--ghost" @click="closeRejectModal" :disabled="rejecting">
+            Cancel
+          </button>
+          <button type="button" class="btn btn--primary" @click="submitReject" :disabled="rejecting">
+            {{ rejecting ? 'Rejecting…' : 'Reject request' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <section class="admin__messages" ref="messagesRef">
       <div class="admin__counties-head">
         <div>
@@ -532,6 +656,7 @@ import { useCounties } from '@/stores/counties'
 import propertySubmissionService from '@/services/propertySubmissionService'
 import contactMessageService from '@/services/contactMessageService'
 import authService from '@/services/authService'
+import propertyEditRequestService from '@/services/propertyEditRequestService'
 
 const rows = ref([])
 const loading = ref(true)
@@ -543,6 +668,7 @@ const toolbarRef = ref(null)
 const tableRef = ref(null)
 const emptyRef = ref(null)
 const messagesRef = ref(null)
+const editRequestsRef = ref(null)
 
 // TEMPORARY, until the backend returns `featured_at` on each submission:
 // a small localStorage-backed store so a listing that's already featured
@@ -879,6 +1005,101 @@ async function checkExpiredFeatures() {
   }
 }
 
+// --- Edit requests -------------------------------------------------------
+const editRequests = ref([])
+const editRequestsLoading = ref(true)
+const editRequestsError = ref('')
+const editRequestStatusFilter = ref('pending')
+const editRequestFilters = [
+  { value: 'pending', label: 'Pending' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'rejected', label: 'Rejected' },
+  { value: 'all', label: 'All' }
+]
+const editRequestActionId = ref(null)
+
+async function loadEditRequests() {
+  editRequestsLoading.value = true
+  editRequestsError.value = ''
+  try {
+    const { data } = await propertyEditRequestService.getAll(editRequestStatusFilter.value)
+    editRequests.value = data
+  } catch (e) {
+    editRequestsError.value = 'Could not load edit requests. Please refresh and try again.'
+  } finally {
+    editRequestsLoading.value = false
+  }
+}
+
+function changeEditRequestFilter(value) {
+  editRequestStatusFilter.value = value
+  loadEditRequests()
+}
+
+// Maps a request's status to the existing status-pill colour classes
+// (status-pill--featured/pending/rejected are already styled above) so
+// "approved" reads as the same green as "featured" rather than needing
+// its own colour.
+function editRequestStatusClass(status) {
+  if (status === 'approved') return 'featured'
+  if (status === 'rejected') return 'rejected'
+  return 'pending'
+}
+
+async function handleApproveEditRequest(id) {
+  editRequestActionId.value = id
+  editRequestsError.value = ''
+  try {
+    await propertyEditRequestService.approve(id)
+    await loadEditRequests()
+  } catch (e) {
+    editRequestsError.value = e.response?.data?.error || 'Could not approve this request. Please try again.'
+  } finally {
+    editRequestActionId.value = null
+  }
+}
+
+const rejectTarget = ref(null)
+const rejectNote = ref('')
+const rejecting = ref(false)
+const rejectError = ref('')
+
+function openRejectModal(req) {
+  rejectTarget.value = req
+  rejectNote.value = ''
+  rejectError.value = ''
+}
+
+function closeRejectModal() {
+  if (rejecting.value) return
+  rejectTarget.value = null
+  rejectNote.value = ''
+  rejectError.value = ''
+}
+
+async function submitReject() {
+  if (!rejectTarget.value) return
+
+  const note = rejectNote.value.trim()
+  if (note.length < 5) {
+    rejectError.value = 'Please explain why this request is being rejected (at least 5 characters).'
+    return
+  }
+
+  rejecting.value = true
+  rejectError.value = ''
+  try {
+    await propertyEditRequestService.reject(rejectTarget.value.id, note)
+    rejectTarget.value = null
+    rejectNote.value = ''
+    await loadEditRequests()
+  } catch (e) {
+    rejectError.value = e.response?.data?.error || 'Could not reject this request. Please try again.'
+  } finally {
+    rejecting.value = false
+  }
+}
+
 // --- Contact messages --------------------------------------------------
 const messages = ref([])
 const messagesLoading = ref(true)
@@ -1135,6 +1356,7 @@ async function handleGrantAccess() {
 
 onMounted(() => {
   loadRows()
+  loadEditRequests()
   loadMessages()
   fetchCounties()
 
@@ -1745,6 +1967,28 @@ tbody tr:hover { background: rgba(237, 231, 218, 0.03); }
 .admin__message-text {
   max-width: 360px;
   white-space: normal;
+  line-height: 1.5;
+}
+
+.edit-request__changes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12.5px;
+}
+
+.edit-request__changes strong {
+  color: var(--brass-bright);
+  font-weight: 600;
+}
+
+.edit-request__admin-note {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  color: var(--bone-dim);
   line-height: 1.5;
 }
 

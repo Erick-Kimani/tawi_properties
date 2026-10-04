@@ -16,6 +16,7 @@
   
   <!-- Add the v-if here -->
   <RouterLink v-if="authStore.user?.role?.slug === 'administrator'" to="/admin">Admin</RouterLink>
+  <RouterLink v-if="authStore.isAuthenticated" to="/my-listings">My listings</RouterLink>
    <RouterLink to="/property-map" @click="dropdownOpen = false">Map</RouterLink>
       <RouterLink to="/contact" @click="dropdownOpen = false">Contact</RouterLink>
 
@@ -62,7 +63,20 @@
     </div>
 
     <div class="nav__mobile" v-if="menuOpen">
-      <RouterLink to="/admin" @click="menuOpen = false">Admin</RouterLink>
+      <RouterLink
+        v-if="authStore.user?.role?.slug === 'administrator'"
+        to="/admin"
+        @click="menuOpen = false"
+      >
+        Admin
+      </RouterLink>
+      <RouterLink
+        v-if="authStore.isAuthenticated"
+        to="/my-listings"
+        @click="menuOpen = false"
+      >
+        My listings
+      </RouterLink>
       <RouterLink to="/buy" @click="menuOpen = false">Buy</RouterLink>
       <RouterLink to="/rent" @click="menuOpen = false">Rent</RouterLink>
       <RouterLink to="/property-map" @click="menuOpen = false">Map</RouterLink>

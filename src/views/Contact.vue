@@ -124,13 +124,19 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import contactMessageService from '@/services/contactMessageService'
 
 const authStore = useAuthStore()
+const route = useRoute()
 
-const messageText = ref('')
+// Pre-fills the message from ?message=... when another part of the app
+// links here with context already in hand (e.g. "I've used both edit
+// requests for listing #42 and need a change made") rather than making
+// someone retype what they just explained elsewhere. Purely a starting
+// point -- still a normal, editable textarea.
+const messageText = ref(typeof route.query.message === 'string' ? route.query.message : '')
 const submitting = ref(false)
 const justSent = ref(false)
 const error = ref('')

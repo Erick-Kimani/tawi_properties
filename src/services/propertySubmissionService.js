@@ -26,6 +26,14 @@ export const propertySubmissionService = {
     return apiClient.get('/property-listings', { params })
   },
 
+  // Requires auth — the logged-in user's own submissions. Each row comes
+  // back with edit_requests_remaining and has_pending_edit_request
+  // already attached (see PropertySubmissionController::mine), so the
+  // "My listings" page never has to re-derive those client-side.
+  getMine() {
+    return apiClient.get('/property-submissions/mine')
+  },
+
   // Admin only
   getAll(params) {
     return apiClient.get('/property-submissions', { params })
