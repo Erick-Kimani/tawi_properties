@@ -630,6 +630,7 @@ async function onPaymentConfirmed({ checkoutRequestId }) {
 
     lastSubmittedName.value = form.fullName
     submitted.value = true
+    window.dispatchEvent(new Event('property-submission-created'))
   } catch (err) {
     if (err.response?.status === 401) {
       needsLogin.value = true

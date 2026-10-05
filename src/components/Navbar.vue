@@ -16,7 +16,7 @@
   
   <!-- Add the v-if here -->
   <RouterLink v-if="authStore.user?.role?.slug === 'administrator'" to="/admin">Admin</RouterLink>
-  <RouterLink v-if="authStore.isAuthenticated" to="/my-listings">My listings</RouterLink>
+  <RouterLink v-if="hasRegisteredProperty" to="/my-listings">My listings</RouterLink>
    <RouterLink to="/property-map" @click="dropdownOpen = false">Map</RouterLink>
       <RouterLink to="/contact" @click="dropdownOpen = false">Contact</RouterLink>
 
@@ -71,7 +71,7 @@
         Admin
       </RouterLink>
       <RouterLink
-        v-if="authStore.isAuthenticated"
+        v-if="hasRegisteredProperty"
         to="/my-listings"
         @click="menuOpen = false"
       >
@@ -104,8 +104,9 @@
 
 <script setup>
 import { RouterLink, useRoute, useRouter } from 'vue-router'
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import propertySubmissionService from '@/services/propertySubmissionService'
 
 const route = useRoute()
 const router = useRouter()
@@ -114,10 +115,50 @@ const authStore = useAuthStore()
 const menuOpen = ref(false)
 const dropdownOpen = ref(false)
 const loggingOut = ref(false)
+const hasRegisteredProperty = ref(false)
+let registrationCheckId = 0
 
 const isMoreActive = computed(() =>
   route.path.startsWith('/property-map') || route.path.startsWith('/contact')
 )
+
+async function checkPropertyRegistration() {
+  const checkId = ++registrationCheckId
+
+  if (!authStore.isAuthenticated) {
+    hasRegisteredProperty.value = false
+    return
+  }
+
+  try {
+    const { data } = await propertySubmissionService.getMine()
+    if (checkId === registrationCheckId) {
+      hasRegisteredProperty.value = Array.isArray(data) && data.length > 0
+    }
+  } catch (error) {
+    if (checkId === registrationCheckId) {
+      console.error('Could not check property registration:', error)
+    }
+  }
+}
+
+function handlePropertySubmissionCreated() {
+  checkPropertyRegistration()
+}
+
+watch(
+  () => [authStore.isAuthenticated, route.fullPath],
+  checkPropertyRegistration,
+  { immediate: true }
+)
+
+onMounted(() => {
+  window.addEventListener('property-submission-created', handlePropertySubmissionCreated)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('property-submission-created', handlePropertySubmissionCreated)
+})
 
 async function handleLogout() {
   if (loggingOut.value) return

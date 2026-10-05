@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth' // Added this import
+import propertySubmissionService from '@/services/propertySubmissionService'
 import HomeView from '../views/Homepage.vue'
 import SignUpView from '../views/Signup.vue'
 import Login from '../views/Login.vue'
@@ -58,7 +59,7 @@ const router = createRouter({
       path: '/my-listings',
       name: 'my-listings',
       component: MyListings,
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresPropertyRegistration: true },
     },
     {
       // PropertyMapPage.vue decides picker vs. browse mode itself, based
@@ -91,15 +92,15 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
 
   // Everything is public by default — Home, Buy, Rent, the map, category
   // pages, List a Property, and Contact are all browsable without an
   // account. List a Property and Contact each handle their own inline
   // "log in first" treatment for the actual gated action (see
-  // Listaproperty.vue / Contact.vue) rather than being redirected away
-  // from here — only /admin is actually gated at the router level.
+  // Listaproperty.vue / Contact.vue). Admin and My Listings are gated
+  // at the router level.
   if (to.meta.requiresAdmin) {
     if (!authStore.isAuthenticated) {
       return next({ name: 'login', query: { redirect: to.fullPath } })
@@ -111,6 +112,21 @@ router.beforeEach((to, from, next) => {
 
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     return next({ name: 'login', query: { redirect: to.fullPath } })
+  }
+
+  if (to.meta.requiresPropertyRegistration) {
+    try {
+      const { data } = await propertySubmissionService.getMine()
+      if (!Array.isArray(data) || data.length === 0) {
+        return next({ name: 'list-property' })
+      }
+    } catch (error) {
+      if (error.response?.status === 401) {
+        return next({ name: 'login', query: { redirect: to.fullPath } })
+      }
+      // Let MyListings show its existing load error instead of treating
+      // an unavailable API as proof that the user has no submissions.
+    }
   }
 
   // Set password is a one-time page (see AuthController::setPassword).
