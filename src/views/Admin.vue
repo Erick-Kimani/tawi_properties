@@ -118,41 +118,10 @@
               <span class="status-pill" :class="'status-pill--' + row.status">{{ row.status }}</span>
             </td>
             <td class="admin__timer-cell">
-              <div
+              <FeatureExpiryCountdown
                 v-if="featureExpiryInfo(row)"
-                class="flip-countdown"
-                :class="'flip-countdown--' + featureExpiryInfo(row).severity"
-              >
-                <div class="flip-countdown__units">
-                  <div class="flip-unit" v-for="tu in timeUnitsFor(row)" :key="tu.key">
-                    <div class="flip-unit__digits">
-                      <div class="flip-digit" v-for="(d, di) in tu.digits" :key="di">
-                        <Transition name="flip" mode="out-in">
-                          <span :key="d" class="flip-digit__face">{{ d }}</span>
-                        </Transition>
-                      </div>
-                    </div>
-                    <span class="flip-unit__label">{{ tu.label }}</span>
-                  </div>
-                </div>
-
-                <div class="flip-countdown__divider"></div>
-
-                <div class="flip-calendar">
-                  <div class="flip-calendar__unit" v-for="cu in calendarUnitsFor(row)" :key="cu.key">
-                    <div class="flip-digit flip-digit--wide">
-                      <Transition name="flip" mode="out-in">
-                        <span :key="cu.value" class="flip-digit__face">{{ cu.value }}</span>
-                      </Transition>
-                    </div>
-                    <span class="flip-unit__label">{{ cu.label }}</span>
-                  </div>
-                </div>
-
-                <p class="flip-countdown__status">
-                  {{ featureExpiryInfo(row).expired ? 'Pulling down…' : 'Until pull-down' }}
-                </p>
-              </div>
+                :featured-at="row.featuredAt"
+              />
               <span v-else class="feature-timer feature-timer--none">—</span>
             </td>
             <td class="admin__date">{{ row.submittedAt }}</td>
@@ -657,6 +626,13 @@ import propertySubmissionService from '@/services/propertySubmissionService'
 import contactMessageService from '@/services/contactMessageService'
 import authService from '@/services/authService'
 import propertyEditRequestService from '@/services/propertyEditRequestService'
+import FeatureExpiryCountdown from '@/components/FeatureExpiryCountdown.vue'
+import {
+  clearStoredFeaturedAt,
+  getFeatureExpiryInfo,
+  getFeaturedAt,
+  setStoredFeaturedAt
+} from '@/utils/featureExpiry'
 
 const rows = ref([])
 const loading = ref(true)
@@ -670,48 +646,9 @@ const emptyRef = ref(null)
 const messagesRef = ref(null)
 const editRequestsRef = ref(null)
 
-// TEMPORARY, until the backend returns `featured_at` on each submission:
-// a small localStorage-backed store so a listing that's already featured
-// still gets a real countdown instead of "—". The first time we see such
-// a row, we start its month-long clock "now" and remember that timestamp
-// in this browser so it survives a refresh. The moment the backend sends
-// a real `featured_at`, mapSubmission() below prefers that over anything
-// stored here — this whole block becomes dead code with zero changes
-// needed elsewhere.
-const FEATURE_STORAGE_PREFIX = 'tawi_admin_featured_at:'
-
-function getStoredFeaturedAt(id) {
-  try {
-    return localStorage.getItem(FEATURE_STORAGE_PREFIX + id)
-  } catch (e) {
-    return null // private-mode/quota errors — timer just won't persist
-  }
-}
-
-function setStoredFeaturedAt(id, iso) {
-  try {
-    localStorage.setItem(FEATURE_STORAGE_PREFIX + id, iso)
-  } catch (e) {
-    /* ignore */
-  }
-}
-
-function clearStoredFeaturedAt(id) {
-  try {
-    localStorage.removeItem(FEATURE_STORAGE_PREFIX + id)
-  } catch (e) {
-    /* ignore */
-  }
-}
-
 // Maps the API's snake_case submission shape onto what the template expects.
 function mapSubmission(s) {
-  let featuredAt = s.featured_at || null
-
-  if (!featuredAt && s.status === 'featured') {
-    featuredAt = getStoredFeaturedAt(s.id) || new Date().toISOString()
-    setStoredFeaturedAt(s.id, featuredAt)
-  }
+  const featuredAt = getFeaturedAt(s.id, s.status, s.featured_at)
 
   return {
     id: s.id,
@@ -902,82 +839,14 @@ const pendingCount = computed(() => rows.value.filter((r) => r.status === 'pendi
 // again. This is enforced here on the client for now — once the backend
 // ships a scheduled job doing the same thing server-side, this just becomes
 // a live countdown display and a harmless client-side backstop.
-const FEATURE_MONTHS = 1
-
-// Calendar-month add (not a flat 30 days), clamping to the last day of the
-// target month when the start day doesn't exist there (e.g. Jan 31 -> Feb 28).
-function addMonths(date, months) {
-  const result = new Date(date)
-  const originalDay = result.getDate()
-  result.setMonth(result.getMonth() + months)
-  if (result.getDate() !== originalDay) {
-    result.setDate(0)
-  }
-  return result
-}
-
 // Ticks so the countdown flips live (down to the second) without needing
 // a page refresh.
 const now = ref(Date.now())
 let clockInterval = null
 
-// Returns null when there's nothing to show (not featured, or no
-// featuredAt yet), otherwise the full breakdown the flip-clock template
-// needs: time remaining broken into units, plus the actual calendar date
-// (day/month/year) the listing will be pulled down on.
 function featureExpiryInfo(row) {
   if (row.status !== 'featured' || !row.featuredAt) return null
-
-  const featuredDate = new Date(row.featuredAt)
-  if (Number.isNaN(featuredDate.getTime())) return null
-
-  const expiresAt = addMonths(featuredDate, FEATURE_MONTHS)
-  const msLeft = expiresAt.getTime() - now.value
-  const expired = msLeft <= 0
-
-  // Clamp at zero once expired so the flip clock settles on 00:00:00:00
-  // instead of counting into negative digits while the auto-unfeature
-  // request is in flight.
-  const absMs = Math.max(msLeft, 0)
-  const days = Math.floor(absMs / (1000 * 60 * 60 * 24))
-  const hours = Math.floor((absMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-  const minutes = Math.floor((absMs % (1000 * 60 * 60)) / (1000 * 60))
-  const seconds = Math.floor((absMs % (1000 * 60)) / 1000)
-
-  let severity = 'ok'
-  if (expired) severity = 'expired'
-  else if (days < 1) severity = 'critical'
-  else if (days <= 5) severity = 'warning'
-
-  return { expiresAt, expired, severity, days, hours, minutes, seconds }
-}
-
-// Splits each time unit into zero-padded digit pairs for the flip-clock
-// display, e.g. days: 7 -> ['0', '7'].
-function timeUnitsFor(row) {
-  const info = featureExpiryInfo(row)
-  if (!info) return []
-  return [
-    { key: 'days', label: 'Days', digits: String(info.days).padStart(2, '0').split('') },
-    { key: 'hours', label: 'Hours', digits: String(info.hours).padStart(2, '0').split('') },
-    { key: 'minutes', label: 'Minutes', digits: String(info.minutes).padStart(2, '0').split('') },
-    { key: 'seconds', label: 'Seconds', digits: String(info.seconds).padStart(2, '0').split('') }
-  ]
-}
-
-// The three calendar cards (date / month / year) for the exact pull-down
-// date. Each is keyed on its own value so it only flips when that specific
-// card's value actually changes — the date card flips daily, month
-// monthly, year yearly — independent of the seconds ticking above.
-function calendarUnitsFor(row) {
-  const info = featureExpiryInfo(row)
-  if (!info) return []
-  const d = info.expiresAt
-  return [
-    { key: 'date', label: 'Date', value: String(d.getDate()).padStart(2, '0') },
-    { key: 'month', label: 'Month', value: d.toLocaleDateString(undefined, { month: 'short' }).toUpperCase() },
-    { key: 'year', label: 'Year', value: String(d.getFullYear()) }
-  ]
+  return getFeatureExpiryInfo(row.featuredAt, now.value)
 }
 
 const expiringSoonCount = computed(() =>
@@ -1813,155 +1682,6 @@ tbody tr:hover { background: rgba(237, 231, 218, 0.03); }
 .admin__timer-cell {
   padding-top: 10px;
   padding-bottom: 10px;
-}
-
-/* ---------- Flip-clock countdown ---------- */
-.flip-countdown {
-  display: inline-flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(0, 0, 0, 0.12) 100%);
-  border: 1px solid rgba(237, 231, 218, 0.08);
-}
-
-.flip-countdown__units {
-  display: flex;
-  gap: 8px;
-}
-
-.flip-countdown__divider {
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(237, 231, 218, 0.14), transparent);
-}
-
-.flip-calendar {
-  display: flex;
-  gap: 10px;
-}
-
-.flip-unit,
-.flip-calendar__unit {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-
-.flip-unit__digits {
-  display: flex;
-  gap: 2px;
-}
-
-/* Each digit is its own mechanical "flap" — dark gradient face, a hairline
-   crease at the midpoint, and a soft top sheen, echoing a split-flap clock. */
-.flip-digit {
-  position: relative;
-  width: 20px;
-  height: 28px;
-  border-radius: 4px;
-  background: linear-gradient(180deg, #363c44 0%, #16191d 100%);
-  border: 1px solid rgba(237, 231, 218, 0.1);
-  box-shadow:
-    0 2px 5px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  overflow: hidden;
-  perspective: 240px;
-  transform-style: preserve-3d;
-}
-
-.flip-digit--wide {
-  width: auto;
-  min-width: 34px;
-  padding: 0 6px;
-}
-
-.flip-digit::after {
-  /* the crease line down the middle of the flap */
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: rgba(0, 0, 0, 0.55);
-  z-index: 2;
-  pointer-events: none;
-}
-
-.flip-digit__face {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: 13px;
-  letter-spacing: 0.02em;
-  color: var(--bone);
-  backface-visibility: hidden;
-  transform-origin: center;
-}
-
-.flip-unit__label {
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--brass-bright);
-}
-
-.flip-countdown__status {
-  margin: 0;
-  font-size: 10px;
-  letter-spacing: 0.02em;
-  color: var(--bone-dim);
-  text-align: center;
-}
-
-/* Severity accents — the same amber/red language as the status pills. */
-.flip-countdown--warning .flip-digit {
-  border-color: rgba(209, 178, 127, 0.4);
-}
-.flip-countdown--warning .flip-digit__face {
-  color: var(--brass-bright);
-}
-
-.flip-countdown--critical .flip-digit,
-.flip-countdown--expired .flip-digit {
-  border-color: rgba(217, 139, 106, 0.5);
-  animation: flip-glow 1.6s ease-in-out infinite;
-}
-.flip-countdown--critical .flip-digit__face,
-.flip-countdown--expired .flip-digit__face {
-  color: #d98b6a;
-}
-.flip-countdown--expired .flip-countdown__status {
-  color: #d98b6a;
-}
-
-@keyframes flip-glow {
-  0%, 100% { box-shadow: 0 2px 5px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06); }
-  50% { box-shadow: 0 2px 5px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 0 8px rgba(217, 139, 106, 0.55); }
-}
-
-/* The "calendar effect": each digit/card 3D-flips on its top edge like a
-   split-flap display whenever its value changes — Vue's <Transition
-   name="flip"> keys on the value itself, so this fires per-digit, only
-   when that digit actually changes. */
-.flip-enter-active,
-.flip-leave-active {
-  transition: transform 0.45s cubic-bezier(0.45, 0.05, 0.15, 1), opacity 0.25s linear;
-}
-.flip-enter-from {
-  transform: rotateX(-100deg);
-  opacity: 0;
-}
-.flip-leave-to {
-  transform: rotateX(100deg);
-  opacity: 0;
 }
 
 .admin__message-text {

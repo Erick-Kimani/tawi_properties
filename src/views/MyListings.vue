@@ -23,50 +23,70 @@
       </div>
 
       <div v-if="!loading && rows.length" class="my-listings__grid">
-        <article v-for="row in rows" :key="row.id" class="listing-card card-surface">
-          <div class="listing-card__media">
-            <img v-if="row.photo_url" :src="row.photo_url" :alt="row.location" />
-            <div v-else class="listing-card__media-placeholder">No photo</div>
-            <span class="status-pill" :class="'status-pill--' + row.status">{{ row.status }}</span>
-          </div>
-
-          <div class="listing-card__body">
-            <div class="listing-card__badges">
-              <span class="badge" :class="'badge--' + row.type.toLowerCase()">{{ row.type }}</span>
-              <span
-                class="badge badge--listing"
-                :class="row.listing_type === 'rent' ? 'badge--listing-rent' : 'badge--listing-sale'"
-              >
-                {{ row.listing_type === 'rent' ? 'Rent' : 'Sell' }}
-              </span>
+        <div
+          v-for="row in rows"
+          :key="row.id"
+          class="listing-row"
+          :class="{ 'listing-row--featured': row.status === 'featured' && row.featured_at }"
+        >
+          <article class="listing-card card-surface">
+            <div class="listing-card__media">
+              <img v-if="row.photo_url" :src="row.photo_url" :alt="row.location" />
+              <div v-else class="listing-card__media-placeholder">No photo</div>
+              <span class="status-pill" :class="'status-pill--' + row.status">{{ row.status }}</span>
             </div>
 
-            <h2 class="listing-card__location">{{ row.location }}</h2>
-            <p class="listing-card__price">{{ row.price_range }}</p>
+            <div class="listing-card__body">
+              <div class="listing-card__badges">
+                <span class="badge" :class="'badge--' + row.type.toLowerCase()">{{ row.type }}</span>
+                <span
+                  class="badge badge--listing"
+                  :class="row.listing_type === 'rent' ? 'badge--listing-rent' : 'badge--listing-sale'"
+                >
+                  {{ row.listing_type === 'rent' ? 'Rent' : 'Sell' }}
+                </span>
+              </div>
 
-            <p v-if="row.status === 'rejected' && row.review_note" class="listing-card__review-note">
-              Admin note: {{ row.review_note }}
-            </p>
+              <h2 class="listing-card__location">{{ row.location }}</h2>
+              <p class="listing-card__price">{{ row.price_range }}</p>
 
-            <div class="listing-card__edit-row">
-              <p v-if="row.has_pending_edit_request" class="listing-card__edit-status">
-                Edit request pending review
+              <p v-if="row.status === 'rejected' && row.review_note" class="listing-card__review-note">
+                Admin note: {{ row.review_note }}
               </p>
-              <p v-else class="listing-card__edit-status">
-                {{ row.edit_requests_remaining }} of 2 edit requests remaining
-              </p>
 
-              <button
-                v-if="row.status !== 'rejected'"
-                type="button"
-                class="action action--feature"
-                @click="openEditModal(row)"
-              >
-                Request edit
-              </button>
+              <div class="listing-card__edit-row">
+                <p v-if="row.has_pending_edit_request" class="listing-card__edit-status">
+                  Edit request pending review
+                </p>
+                <p v-else class="listing-card__edit-status">
+                  {{ row.edit_requests_remaining }} of 2 edit requests remaining
+                </p>
+
+                <button
+                  v-if="row.status !== 'rejected'"
+                  type="button"
+                  class="action action--feature"
+                  @click="openEditModal(row)"
+                >
+                  Request edit
+                </button>
+              </div>
             </div>
-          </div>
-        </article>
+          </article>
+
+          <aside
+            v-if="row.status === 'featured' && row.featured_at"
+            class="listing-row__renewal"
+            aria-label="Property renewal countdown"
+          >
+            <FeatureExpiryCountdown
+              :featured-at="row.featured_at"
+              status-label="Until renewal"
+              expired-label="Renewal due"
+              size="large"
+            />
+          </aside>
+        </div>
       </div>
 
       <div v-else-if="!loading && !rows.length" class="my-listings__empty card-surface">
@@ -89,6 +109,8 @@ import { ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import propertySubmissionService from '@/services/propertySubmissionService'
 import PropertyEditRequestModal from '@/components/PropertyEditRequestModal.vue'
+import FeatureExpiryCountdown from '@/components/FeatureExpiryCountdown.vue'
+import { getFeaturedAt } from '@/utils/featureExpiry'
 
 const rows = ref([])
 const loading = ref(true)
@@ -101,7 +123,10 @@ async function loadRows() {
   loadError.value = ''
   try {
     const { data } = await propertySubmissionService.getMine()
-    rows.value = data
+    rows.value = data.map((row) => ({
+      ...row,
+      featured_at: getFeaturedAt(row.id, row.status, row.featured_at)
+    }))
   } catch (e) {
     loadError.value = 'Could not load your listings. Please refresh and try again.'
   } finally {
@@ -179,12 +204,30 @@ onMounted(loadRows)
 .my-listings__status-text--success { color: var(--pine-bright); }
 
 .my-listings__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 20px;
 }
 
+.listing-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+
+.listing-row--featured {
+  grid-template-columns: minmax(0, 400px) auto;
+  align-items: center;
+  justify-content: start;
+}
+
+.listing-row__renewal {
+  display: flex;
+  justify-content: center;
+}
+
 .listing-card {
+  width: min(100%, 400px);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -354,5 +397,6 @@ onMounted(loadRows)
 @media (max-width: 720px) {
   .my-listings__hero { padding: 48px 20px 28px; }
   .my-listings__body { padding: 0 20px 60px; }
+  .listing-row--featured { grid-template-columns: minmax(0, 1fr); }
 }
 </style>
