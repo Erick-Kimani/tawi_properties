@@ -13,7 +13,7 @@
             backgroundImage: `url(${panel.image})`
           }"
         >
-          <span class="hero__tag">{{ panel.label }}</span>
+          <span v-if="panel.label" class="hero__tag">{{ panel.label }}</span>
         </div>
       </div>
 
@@ -160,15 +160,72 @@ onMounted(() => {
   padding: 13px 26px;
 }
 
-@media (max-width: 720px) {
-  .hero__row { flex-direction: column; }
-  .hero__panel { clip-path: none !important; margin-right: 0 !important; height: 33.33%; }
-  .hero__copy {
-    left: 20px;
-    right: 20px;
-    bottom: 32px;
-    max-width: none;
+/* ---- Tablet & phone (<= 1023px): put a dark fade behind the text so it
+   stays readable on top of the photos. Desktop is untouched. ---- */
+@media (max-width: 1023px) {
+  .hero__stage::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 5;               /* above the photos (1-3), below the text (10) */
+    pointer-events: none;
+    background-image: linear-gradient(
+      to top,
+      rgb(15 19 24 / 0.88) 0%,
+      rgb(15 19 24 / 0.6) 30%,
+      rgb(15 19 24 / 0) 58%
+    );
   }
-  .hero__headline { font-size: 30px; }
+}
+
+/* ---- Phone (<= 720px): the three photos stack as a band at the top,
+   fading into the dark background, and the text sits underneath on solid
+   dark — all three photos stay visible and the text never overlaps them. ---- */
+@media (max-width: 720px) {
+  /* Start the hero BELOW the fixed navbar so the first photo isn't hidden. */
+  .hero { padding-top: var(--nav-h); }
+
+  .hero__stage {
+    height: auto;
+    overflow: visible;
+  }
+  .hero__stage::after { content: none; }   /* tablet fade not needed here */
+
+  .hero__row {
+    position: relative;
+    height: clamp(300px, 46vh, 400px);
+    height: clamp(300px, 46svh, 400px);
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .hero__panel {
+    clip-path: none !important;
+    margin-right: 0 !important;
+    height: auto;
+  }
+  /* Soft fade from the photos into the page background. */
+  .hero__row::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 110px;
+    z-index: 5;
+    pointer-events: none;
+    background-image: linear-gradient(to top, var(--ink) 8%, rgb(15 19 24 / 0) 100%);
+  }
+
+  .hero__copy {
+    position: relative;
+    left: auto;
+    bottom: auto;
+    max-width: none;
+    margin-top: -36px;                    /* tuck the first line into the fade */
+    padding: 0 var(--gutter) 40px;
+  }
+  .hero__eyebrow { font-size: 13px; margin-bottom: 10px; }
+  .hero__headline { font-size: var(--fs-h1); }
+  .hero__sub { font-size: 15px; margin-bottom: 0; }
 }
 </style>

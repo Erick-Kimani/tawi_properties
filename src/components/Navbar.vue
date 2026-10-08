@@ -411,6 +411,40 @@ async function handleLogout() {
   .nav__links,
   .nav__actions { display: none; }
   .nav__burger { display: flex; }
+
+  /* Compact bar with a guaranteed height (--nav-h, from responsive.css) so
+     other pages can clear it reliably. */
+  .nav__inner {
+    min-height: var(--nav-h);
+    padding-top: 8px;
+    padding-bottom: 8px;
+    gap: 12px;
+  }
+  .nav__mark { min-width: 0; }
+  .nav__mark-glyph { width: 34px; height: 34px; }
+  .nav__mark-word { font-size: clamp(15px, 4.8vw, 20px); white-space: nowrap; }
+  .nav__tagline { font-size: 11px; margin-top: 1px; }
+
+  /* Finger-sized hamburger (44px hit area, same 22px lines). */
+  .nav__burger {
+    align-items: center;
+    justify-content: center;
+    min-width: var(--tap);
+    min-height: var(--tap);
+    margin-right: -10px;
+    padding: 0;
+  }
+
+  /* Open menu: scrolls if it's taller than the screen (small phones,
+     landscape) instead of running off the bottom. */
+  .nav__mobile {
+    max-height: calc(100vh - var(--nav-h));
+    max-height: calc(100svh - var(--nav-h));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .nav__mobile a:not(.nav__cta) { padding: 4px 0; }
+
   .nav__mobile {
     display: flex;
     flex-direction: column;

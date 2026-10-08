@@ -1,0 +1,163 @@
+/* =====================================================================
+   responsive.css — shared responsive toolkit (Tawi Properties)
+   ---------------------------------------------------------------------
+   Imported ONCE in App.vue, so everything below is available to every
+   page and component. Nothing here changes how a page looks until you
+   use a variable or a class from it (the few "global safety nets" in
+   section 2 are invisible unless something would otherwise break).
+
+   HOW TO USE IT FROM ANY .vue FILE
+   - Variables  : padding-top: calc(var(--nav-h) + 24px);
+   - Classes    : <div class="r-container r-section"> …
+   - Both are prefixed so they never collide with your own class names.
+
+   BREAKPOINTS USED ACROSS THE SITE (CSS can't put var() inside @media,
+   so these are written out — keep them consistent):
+     480px   small phones
+     720px   phones / content stacks to one column   (hero, search bar)
+     860px   navbar collapses into the hamburger     (Navbar.vue)
+     1024px  laptops and up
+   ===================================================================== */
+
+
+/* ---------------------------------------------------------------------
+   1. VARIABLES (design tokens for size, spacing and touch)
+   --------------------------------------------------------------------- */
+:root {
+  /* Height of the fixed navbar. Navbar.vue enforces it on phones, so you
+     can safely clear the navbar with:  padding-top: var(--nav-h);      */
+  --nav-h: 64px;
+
+  --page-max: 1320px;                       /* widest the content may grow   */
+  --tap: 44px;                              /* minimum finger-friendly size  */
+  --space-section: clamp(40px, 7vw, 96px);  /* vertical rhythm between blocks */
+  --space-gap: clamp(16px, 2.5vw, 28px);    /* gap between cards / columns    */
+
+  /* Fluid type: scales smoothly with the screen, never too small/large. */
+  --fs-body: clamp(15px, 0.9rem + 0.2vw, 17px);
+  --fs-h1: clamp(30px, 5vw, 52px);
+  --fs-h2: clamp(24px, 3.4vw, 38px);
+  --fs-h3: clamp(18px, 2.2vw, 24px);
+
+  /* Dark fade for putting text on top of photos (use as a background-image
+     on an overlay: background-image: var(--scrim-bottom)).              */
+  --scrim-bottom: linear-gradient(
+    to top,
+    rgb(15 19 24 / 0.96) 0%,
+    rgb(15 19 24 / 0.9) 38%,
+    rgb(15 19 24 / 0.55) 62%,
+    rgb(15 19 24 / 0) 100%
+  );
+}
+
+@media (min-width: 861px) {
+  :root { --nav-h: 76px; } /* desktop navbar is taller (bigger type + links) */
+}
+
+
+/* ---------------------------------------------------------------------
+   2. GLOBAL SAFETY NETS (invisible unless something would break)
+   --------------------------------------------------------------------- */
+
+/* Stops iOS/Android from auto-inflating text when the phone is rotated. */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+/* Anchor links / scrollIntoView should stop BELOW the fixed navbar. */
+html { scroll-padding-top: calc(var(--nav-h) + 12px); }
+
+/* Safety net: a stray wide element can't make the page scroll sideways.
+   It only hides the symptom (the wide element is clipped), so if
+   something looks cut off on a phone, find and fix the element itself.
+   (`clip`, unlike `hidden`, keeps position: sticky working.) */
+body { overflow-x: clip; }
+
+video, iframe { max-width: 100%; }
+
+/* Long words / emails / URLs wrap instead of pushing the layout wide. */
+h1, h2, h3, h4, p, li, a, td { overflow-wrap: break-word; }
+
+/* iOS Safari zooms the whole page when you tap an input whose text is
+   smaller than 16px — which then wrecks the layout. Touch screens only. */
+@media (hover: none) and (pointer: coarse) {
+  input, select, textarea { font-size: max(16px, 1em) !important; }
+}
+
+
+/* ---------------------------------------------------------------------
+   3. LAYOUT UTILITIES (opt-in classes — add them in the template)
+   --------------------------------------------------------------------- */
+
+/* Centered content column with side padding that grows with the screen. */
+.r-container {
+  width: 100%;
+  max-width: var(--page-max);
+  margin-inline: auto;
+  padding-inline: var(--gutter, 20px);
+}
+
+/* Consistent vertical breathing room between page sections. */
+.r-section { padding-block: var(--space-section); }
+
+/* Clears the fixed navbar at the top of a page, whatever its height.
+   Replaces hard-coded values like `padding-top: 130px`.                */
+.r-pad-nav { padding-top: calc(var(--nav-h) + var(--r-nav-gap, 32px)); }
+
+/* Cards that wrap by themselves: 4 → 3 → 2 → 1 columns, no media query.
+   Change the minimum card width with  style="--r-min: 220px".          */
+.r-grid {
+  display: grid;
+  gap: var(--space-gap);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--r-min, 260px)), 1fr));
+}
+
+/* Two columns (text + image) on wide screens, stacked on phones. */
+.r-split {
+  display: grid;
+  gap: var(--space-gap);
+  grid-template-columns: 1fr;
+  align-items: center;
+}
+@media (min-width: 861px) {
+  .r-split { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Even vertical spacing between direct children. */
+.r-stack > * + * { margin-top: var(--r-stack, 1rem); }
+
+/* Wide tables / code that must scroll INSIDE their box, not the page. */
+.r-scroll-x {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+
+/* ---------------------------------------------------------------------
+   4. MEDIA & TOUCH UTILITIES
+   --------------------------------------------------------------------- */
+
+/* Same image shape on every screen — crops neatly instead of stretching. */
+.r-ratio-16x9,
+.r-ratio-4x3,
+.r-ratio-square { display: block; width: 100%; object-fit: cover; }
+.r-ratio-16x9   { aspect-ratio: 16 / 9; }
+.r-ratio-4x3    { aspect-ratio: 4 / 3; }
+.r-ratio-square { aspect-ratio: 1 / 1; }
+
+/* Finger-sized hit area (44×44px) for small buttons / icons. */
+.r-tap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--tap);
+  min-height: var(--tap);
+}
+
+/* Fluid headings, so you stop hand-writing per-breakpoint font sizes. */
+.r-h1 { font-size: var(--fs-h1); line-height: 1.08; }
+.r-h2 { font-size: var(--fs-h2); line-height: 1.15; }
+.r-h3 { font-size: var(--fs-h3); line-height: 1.25; }
+
+/* Show / hide by screen size (phones = 720px and below). */
+@media (max-width: 720px)  { .r-hide-sm { display: none !important; } }
+@media (min-width: 721px)  { .r-show-sm { display: none !important; } }

@@ -1,7 +1,7 @@
 <script setup>
 // Replace with your real business number, in international format, no + or leading zeros.
 // e.g. Kenyan number 0712 345 678 -> 254712345678
-const WHATSAPP_NUMBER = '254791018109'
+const WHATSAPP_NUMBER = '254180715711'
 const DEFAULT_MESSAGE = "Hi, I'm interested in a property listed on Tawi Properties."
 
 const whatsappHref = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(DEFAULT_MESSAGE)}`

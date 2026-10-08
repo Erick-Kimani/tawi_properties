@@ -197,7 +197,19 @@ function handleSearch() {
 
 .search-strip__submit:hover { background: var(--brass-bright); }
 
+/* Tablet: the three fields fit in a row but the Search button wraps onto
+   its own line — give it a full-width bar instead of a tiny pill. */
+@media (max-width: 820px) {
+  .field:first-child { border-bottom-left-radius: 0; }
+  .search-strip__submit {
+    flex: 1 1 100%;
+    padding: 16px;
+    border-radius: 0 0 14px 14px;
+  }
+}
+
 @media (max-width: 720px) {
+  .intent-toggle__option { min-height: var(--tap); }
   .search-strip { transform: none; margin: 24px 20px 0; }
   .field { border-right: none; border-bottom: 1px solid rgba(237, 231, 218, 0.08); }
   /* Stacked layout: the first field is now the top edge of the column

@@ -44,6 +44,25 @@
           <span class="footer__mark-word">Tawi Properties</span>
         </RouterLink>
         <p class="footer__tagline">Find, list, and manage property across Kenya.</p>
+
+        <!-- Plain <a href="tel:"> so tapping it dials on mobile. -->
+        <a class="footer__phone" href="tel:0180715711" aria-label="Call Tawi Properties on 0180715711">
+          <svg
+            class="footer__phone-icon"
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.34 1.78.66 2.62a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.46-1.23a2 2 0 0 1 2.11-.45c.84.32 1.72.54 2.62.66A2 2 0 0 1 22 16.92z" />
+          </svg>
+          <span>0180715711</span>
+        </a>
       </div>
 
       <nav class="footer__col">
@@ -290,6 +309,36 @@ async function handleLogout() {
   line-height: 1.6;
   color: var(--bone-dim);
   max-width: 30ch;
+}
+
+/* Phone number under the tagline. The icon takes the brass accent;
+   the number itself stays in the body colour and brightens on hover. */
+.footer__phone {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  margin-top: 4px;
+  color: var(--bone);
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.footer__phone-icon {
+  flex: 0 0 auto;
+  color: var(--brass-bright);
+}
+
+.footer__phone:hover {
+  color: var(--brass-bright);
+}
+
+.footer__phone:focus-visible {
+  outline: 1px solid var(--brass);
+  outline-offset: 4px;
+  border-radius: 2px;
 }
 
 .footer__col {

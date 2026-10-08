@@ -21,6 +21,7 @@ const route = useRoute()
 
 <style>
 @import './styles/tokens.css';
+@import './styles/responsive.css';
 
 #app {
   min-height: 100vh;
