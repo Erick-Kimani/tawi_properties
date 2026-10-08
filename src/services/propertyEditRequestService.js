@@ -7,8 +7,19 @@ export const propertyEditRequestService = {
   // the required seller_note explaining why. Only ever creates a pending
   // request; nothing here touches the live listing (see
   // PropertyEditRequestController::store on the backend).
+  // payload is a plain object, or a FormData when replacement photos
+  // (photo, photo_2, photo_3) are included.
   submit(submissionId, payload) {
-    return apiClient.post(`/property-submissions/${submissionId}/edit-requests`, payload)
+    const config = payload instanceof FormData
+      ? { headers: { 'Content-Type': 'multipart/form-data' } }
+      : undefined
+    return apiClient.post(`/property-submissions/${submissionId}/edit-requests`, payload, config)
+  },
+
+  // Admin only — top up one listing's edit-request allowance for a seller
+  // who's used theirs up. count defaults to 1 server-side (max 5 per grant).
+  grantExtra(submissionId, count = 1) {
+    return apiClient.post(`/property-submissions/${submissionId}/grant-edit-requests`, { count })
   },
 
   // Admin only — the review queue. status defaults to 'pending' server-side

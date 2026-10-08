@@ -13,7 +13,7 @@
         <p class="list-property__intro-sub">
           Tawi Properties lets you add your property directly to the app. Register
           a few details below — the type of property, your contact information,
-          price range and location — and our team will review it for a featured
+          price and location — and our team will review it for a featured
           placement so serious buyers and tenants can find it.
         </p>
 
@@ -28,8 +28,19 @@
           </li>
           <li>
             <span class="list-property__benefit-mark">03</span>
+            A small fee applies only if you want your property featured. For Ksh 1,200, your listing is guaranteed a featured spot for one full month.
+          </li>
+          <li>
+            <span class="list-property__benefit-mark">04</span>
+            Submitted details about the property should be valid and accurate. We intend to build trust and reliability by ensuring that the information provided is correct and up-to-date.
+          </li>
+
+          <li>
+            <span class="list-property__benefit-mark">05</span>
             Our team reviews every submission before it goes live
           </li>
+          
+
         </ul>
       </div>
 

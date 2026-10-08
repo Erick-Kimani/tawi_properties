@@ -75,6 +75,7 @@
 
     <p v-if="loading" class="admin__status-text">Loading submissions…</p>
     <p v-if="loadError" class="admin__status-text admin__status-text--error">{{ loadError }}</p>
+    <p v-if="grantMessage" class="admin__status-text">{{ grantMessage }}</p>
 
     <div class="admin__table admin__table--submissions card-surface" ref="tableRef" v-if="rows.length && filteredRows.length">
       <table>
@@ -88,6 +89,7 @@
             <th>Location</th>
             <th>Status</th>
             <th>Feature timer</th>
+            <th>Edit requests</th>
             <th>Date</th>
             <th></th>
           </tr>
@@ -123,6 +125,18 @@
                 :featured-at="row.featuredAt"
               />
               <span v-else class="feature-timer feature-timer--none">—</span>
+            </td>
+            <td class="admin__edit-slots">
+              <span>{{ row.editRequestsRemaining }} left</span>
+              <button
+                type="button"
+                class="action action--feature"
+                :disabled="grantingId === row.id"
+                :title="'Give this seller one more edit request (currently ' + row.editRequestsRemaining + ' of ' + row.editRequestsLimit + ')'"
+                @click="handleGrantEditRequest(row.id)"
+              >
+                {{ grantingId === row.id ? 'Granting…' : '+1 slot' }}
+              </button>
             </td>
             <td class="admin__date">{{ row.submittedAt }}</td>
             <td class="admin__actions">
@@ -224,6 +238,16 @@
                     <strong>Map position:</strong> {{ req.latitude.toFixed(5) }}, {{ req.longitude.toFixed(5) }}
                   </li>
                   <li v-if="req.phone"><strong>Phone:</strong> {{ req.phone }}</li>
+                  <li v-if="req.photo_url || req.photo_url_2 || req.photo_url_3">
+                    <strong>New photos:</strong>
+                    <div class="edit-request__photos">
+                      <template v-for="(url, i) in [req.photo_url, req.photo_url_2, req.photo_url_3]" :key="i">
+                        <a v-if="url" :href="url" target="_blank" rel="noopener" :title="'Replaces photo ' + (i + 1)">
+                          <img :src="url" :alt="'Proposed photo ' + (i + 1)" />
+                        </a>
+                      </template>
+                    </div>
+                  </li>
                 </ul>
               </td>
               <td class="admin__message-text">{{ req.seller_note }}</td>
@@ -661,6 +685,8 @@ function mapSubmission(s) {
     location: s.location,
     status: s.status,
     photo: s.photo_url,
+    editRequestsRemaining: s.edit_requests_remaining ?? 0,
+    editRequestsLimit: s.edit_requests_limit ?? 2,
     featuredAt,
     submittedAt: s.created_at ? s.created_at.slice(0, 10) : ''
   }
@@ -719,6 +745,28 @@ function animateStatusPulse(id) {
 }
 
 // "Feature" — publishes the submission to Buy/Rent.
+// Grants one listing an extra edit-request slot -- the edit-request
+// counterpart of "Grant one-time access" for Set password.
+const grantingId = ref(null)
+const grantMessage = ref('')
+
+async function handleGrantEditRequest(id) {
+  const row = rows.value.find((r) => r.id === id)
+  if (!row) return
+  loadError.value = ''
+  grantingId.value = id
+  try {
+    const { data } = await propertyEditRequestService.grantExtra(id, 1)
+    row.editRequestsRemaining = data.edit_requests_remaining
+    row.editRequestsLimit = data.edit_requests_limit
+    grantMessage.value = data.message
+  } catch (e) {
+    loadError.value = e.response?.data?.error || 'Could not grant an extra edit request. Please try again.'
+  } finally {
+    grantingId.value = null
+  }
+}
+
 async function handleFeature(id) {
   const row = rows.value.find((r) => r.id === id)
   if (!row) return
@@ -1897,5 +1945,26 @@ tbody tr:hover { background: rgba(237, 231, 218, 0.03); }
   .stat { flex: 1; min-width: 0; }
   .admin__toolbar { align-items: stretch; }
   .admin__search { flex-basis: 100%; }
+}
+.edit-request__photos {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.edit-request__photos img {
+  width: 64px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 3px;
+  border: 1px solid rgba(237, 231, 218, 0.2);
+}
+.admin__edit-slots {
+  white-space: nowrap;
+  font-size: 12.5px;
+}
+
+.admin__edit-slots span {
+  margin-right: 8px;
 }
 </style>

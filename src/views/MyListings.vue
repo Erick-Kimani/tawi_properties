@@ -7,7 +7,7 @@
         <p class="my-listings__sub">
           Every property you've submitted, and its current review status. Each
           listing gets up to two edit requests -- property type, description, map
-          position, and phone -- reviewed by our team before they go live.
+          position, phone, and photos -- reviewed by our team before they go live.
         </p>
       </div>
     </section>
@@ -59,7 +59,7 @@
                   Edit request pending review
                 </p>
                 <p v-else class="listing-card__edit-status">
-                  {{ row.edit_requests_remaining }} of 2 edit requests remaining
+                  {{ row.edit_requests_remaining }} of {{ row.edit_requests_limit ?? 2 }} edit requests remaining
                 </p>
 
                 <button

@@ -23,8 +23,8 @@
       <!-- State 2: both slots used, none pending -->
       <div v-else-if="remaining <= 0" class="edit-modal__notice">
         <p>
-          You've used both edit requests for this listing. For any further change,
-          email us or send a message through Contact Us with a substantive reason —
+          You've used all your edit requests for this listing. For any further change,
+          message us on WhatsApp (button at the bottom right) or through Contact Us with a substantive reason —
           our team reviews these individually.
         </p>
         <RouterLink class="btn btn--primary" :to="contactLink">
@@ -71,6 +71,37 @@
         </div>
 
         <div class="field">
+          <label>Photos</label>
+          <div class="edit-modal__photos">
+            <div v-for="slot in photoSlots" :key="slot.key" class="photo-slot">
+              <div class="photo-slot__frame">
+                <img v-if="previews[slot.key] || slot.current" :src="previews[slot.key] || slot.current" :alt="slot.label" />
+                <span v-else class="photo-slot__empty">No photo</span>
+              </div>
+              <span class="photo-slot__label">{{ slot.label }}</span>
+              <label class="photo-slot__btn" :class="{ 'photo-slot__btn--disabled': submitting }">
+                {{ newPhotos[slot.key] ? 'Change' : (slot.current ? 'Replace' : 'Add') }}
+                <input
+                  type="file"
+                  accept="image/*"
+                  :disabled="submitting"
+                  @change="onPhotoPicked(slot.key, $event)"
+                />
+              </label>
+              <button
+                v-if="newPhotos[slot.key]"
+                type="button"
+                class="photo-slot__undo"
+                @click="clearPhoto(slot.key)"
+              >
+                Undo
+              </button>
+            </div>
+          </div>
+          <p class="field__hint">Images up to 5MB each. New photos go live only after an admin approves the request.</p>
+        </div>
+
+        <div class="field">
           <label for="edit-note">Reason for this change</label>
           <textarea
             id="edit-note"
@@ -104,7 +135,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onBeforeUnmount } from 'vue'
 import { RouterLink } from 'vue-router'
 import PropertyMap from '@/components/PropertyMap.vue'
 import { usePropertyTypes } from '@/stores/propertyTypes'
@@ -123,7 +154,8 @@ const { propertyTypes } = usePropertyTypes()
 // ever changes server-side, PropertyEditRequest::MAX_PER_SUBMISSION is
 // the one place that actually enforces it; this just needs updating to
 // match so the copy doesn't lie.
-const maxRequests = 2
+// Includes any extra slots an admin has granted for this listing.
+const maxRequests = computed(() => props.submission.edit_requests_limit ?? 2)
 const remaining = computed(() => props.submission.edit_requests_remaining ?? 0)
 
 const contactLink = computed(() => ({
@@ -131,7 +163,7 @@ const contactLink = computed(() => ({
   query: {
     message:
       `Requesting a further edit to my listing "${props.submission.location || props.submission.type}" ` +
-      `(submission #${props.submission.id}) -- I've already used both edit requests. Reason: `
+      `(submission #${props.submission.id}) -- I've already used all my edit requests. Reason: `
   }
 }))
 
@@ -158,6 +190,47 @@ const sellerNote = ref('')
 const submitting = ref(false)
 const error = ref('')
 
+// Photos: up to three slots, each showing the live photo (if any) until the
+// seller picks a replacement, which is previewed locally and only uploaded
+// on submit.
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024
+const photoSlots = [
+  { key: 'photo', label: 'Photo 1', current: props.submission.photo_url },
+  { key: 'photo_2', label: 'Photo 2', current: props.submission.photo_url_2 },
+  { key: 'photo_3', label: 'Photo 3', current: props.submission.photo_url_3 }
+]
+const newPhotos = ref({ photo: null, photo_2: null, photo_3: null })
+const previews = ref({ photo: null, photo_2: null, photo_3: null })
+const photosChanged = computed(() => Object.values(newPhotos.value).some(Boolean))
+
+function clearPhoto(key) {
+  if (previews.value[key]) URL.revokeObjectURL(previews.value[key])
+  previews.value[key] = null
+  newPhotos.value[key] = null
+}
+
+function onPhotoPicked(key, event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file) return
+  if (!file.type.startsWith('image/')) {
+    error.value = 'Please choose an image file.'
+    return
+  }
+  if (file.size > MAX_PHOTO_BYTES) {
+    error.value = 'Each photo must be 5MB or smaller.'
+    return
+  }
+  error.value = ''
+  clearPhoto(key)
+  newPhotos.value[key] = file
+  previews.value[key] = URL.createObjectURL(file)
+}
+
+onBeforeUnmount(() => {
+  Object.keys(previews.value).forEach(clearPhoto)
+})
+
 const pinChanged = computed(() => {
   const latChanged = (pin.value?.lat ?? null) !== original.latitude
   const lngChanged = (pin.value?.lng ?? null) !== original.longitude
@@ -168,14 +241,15 @@ const hasChanges = computed(() =>
   formType.value !== original.type ||
   formDescription.value.trim() !== original.description.trim() ||
   formPhone.value.trim() !== (original.phone || '').trim() ||
-  pinChanged.value
+  pinChanged.value ||
+  photosChanged.value
 )
 
 async function handleSubmit() {
   error.value = ''
 
   if (!hasChanges.value) {
-    error.value = 'Please change at least one field (property type, description, map position, or phone).'
+    error.value = 'Please change at least one field (property type, description, map position, phone, or photos).'
     return
   }
   if (sellerNote.value.trim().length < 10) {
@@ -196,9 +270,19 @@ async function handleSubmit() {
     payload.longitude = pin.value.lng
   }
 
+  // Photos need a multipart body; otherwise keep sending plain JSON.
+  let body = payload
+  if (photosChanged.value) {
+    body = new FormData()
+    Object.entries(payload).forEach(([k, v]) => body.append(k, v))
+    Object.entries(newPhotos.value).forEach(([k, file]) => {
+      if (file) body.append(k, file)
+    })
+  }
+
   submitting.value = true
   try {
-    const { data } = await propertyEditRequestService.submit(props.submission.id, payload)
+    const { data } = await propertyEditRequestService.submit(props.submission.id, body)
     emit('submitted', {
       submissionId: props.submission.id,
       editRequestsRemaining: data.edit_requests_remaining
@@ -359,6 +443,74 @@ async function handleSubmit() {
   border-radius: 4px;
   overflow: hidden;
   border: 1px solid rgba(237, 231, 218, 0.15);
+}
+
+.edit-modal__photos {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.photo-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.photo-slot__frame {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: var(--ink);
+  border: 1px solid rgba(237, 231, 218, 0.15);
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.photo-slot__frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo-slot__empty {
+  font-size: 11.5px;
+  color: var(--bone-dim);
+}
+
+.photo-slot__label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+}
+
+.photo-slot__btn {
+  font-size: 12px;
+  color: var(--brass-bright);
+  border: 1px solid rgba(169, 129, 75, 0.45);
+  border-radius: 4px;
+  padding: 5px 12px;
+  cursor: pointer;
+  text-transform: none;
+  letter-spacing: 0;
+  font-family: var(--font-body);
+}
+.photo-slot__btn:hover { border-color: var(--brass); }
+.photo-slot__btn input { display: none; }
+.photo-slot__btn--disabled { opacity: 0.6; cursor: not-allowed; }
+
+.photo-slot__undo {
+  background: none;
+  border: none;
+  font-size: 11.5px;
+  color: var(--bone-dim);
+  cursor: pointer;
+  text-decoration: underline;
 }
 
 .edit-modal__actions {

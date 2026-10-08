@@ -28,8 +28,8 @@
         <!-- Stage 1: confirm phone number -->
         <div v-if="stage === 'form'" class="mpesa-modal__body">
           <p class="mpesa-modal__copy">
-            A one-time listing fee gets your property in front of our review team.
-            You'll get an M-Pesa prompt on the number below — enter your PIN to confirm.
+            Pay KES {{ displayAmount || '1200' }} for 30 days listing period.
+            You'll get an M-Pesa prompt on the number below  enter your PIN to confirm.
           </p>
 
           <label for="mpesa-phone" class="mpesa-modal__label">M-Pesa phone number</label>

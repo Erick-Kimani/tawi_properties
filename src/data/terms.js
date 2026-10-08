@@ -36,7 +36,12 @@ export const TERMS_EFFECTIVE_DATE = '5 October 2026'
 //   - reports are answered within 3 working days
 //   - removal decisions can be challenged within 14 days
 //   - two edit requests per listing (PropertyEditRequestModal.vue)
-export const SUPPORT_EMAIL = 'support@tawiproperties.co.ke'
+// We have no support email address yet, so every "contact us" line in
+// these terms points at the two channels that exist: the Contact page form
+// and the floating WhatsApp button (FloatingWhatsApp.vue). If an email is
+// added later, update this one string and every clause follows.
+export const CONTACT_ROUTES =
+  'the Contact form or the WhatsApp button at the bottom right of the page'
 
 export const TERMS = {
   general: {
@@ -65,8 +70,8 @@ export const TERMS = {
           'Seller to Tawi Properties: the only payment we ever take is the listing fee that sellers pay, through an M-Pesa payment prompt inside the app. It is the only thing we will ever ask anyone to pay us.'
         ],
         affirm:
-          'If anyone — including someone using our name or logo — asks you to send money to “Tawi Properties”, to a “viewing”, “verification” or “booking” fee, or to a personal number or account on our behalf, it is not us. Please do not pay, and tell us at ' +
-          SUPPORT_EMAIL +
+          'If anyone — including someone using our name or logo — asks you to send money to “Tawi Properties”, to a “viewing”, “verification” or “booking” fee, or to a personal number or account on our behalf, it is not us. Please do not pay, and tell us through ' +
+          CONTACT_ROUTES +
           '. We will never ask for your M-Pesa PIN, a one-time code or your password.'
       },
       {
@@ -111,7 +116,7 @@ export const TERMS = {
       {
         heading: 'If something looks wrong, or goes wrong',
         paragraphs: [
-          `If a listing looks wrong — the property is not there, the person cannot prove authority, the details do not match — tell us through the Contact page or at ${SUPPORT_EMAIL}. We look at every report and aim to respond within 3 working days. Reporting is free, and you do not need to have paid anything to make one.`,
+          `If a listing looks wrong — the property is not there, the person cannot prove authority, the details do not match — tell us through ${CONTACT_ROUTES}. We look at every report and aim to respond within 3 working days. Reporting is free, and you do not need to have paid anything to make one.`,
           'When we act on a report we may take the listing down, suspend the seller’s account, and keep the records we hold about it. Where the law requires it, or where it is the right thing to do, we will give those records to the police or other authorities.',
           'If you have already sent money, act quickly: report it to the police, tell your bank or mobile money provider straight away, and then tell us. Speed gives you the best chance of recovering funds, and we will help with the information we hold when properly asked.'
         ]
@@ -140,7 +145,7 @@ export const TERMS = {
         heading: 'Changes, disputes and contact',
         paragraphs: [
           'If we change these terms in a way that affects what you are agreeing to, we will ask you to accept the new version the next time you sign in. Your earlier acceptance stays on record as it was.',
-          `These terms are governed by the laws of Kenya, and the courts of Kenya have jurisdiction. If something goes wrong, please write to us at ${SUPPORT_EMAIL} first — most things are faster to fix that way. Your rights as a consumer under Kenyan law are not affected by these terms.`
+          `These terms are governed by the laws of Kenya, and the courts of Kenya have jurisdiction. If something goes wrong, please reach us through ${CONTACT_ROUTES} first — most things are faster to fix that way. Your rights as a consumer under Kenyan law are not affected by these terms.`
         ]
       }
     ],
@@ -173,7 +178,7 @@ export const TERMS = {
       {
         heading: 'What we do for you',
         paragraphs: [
-          'We review your listing, tell you the outcome, and if we reject it we tell you why. Once approved, we publish it and feature it for one calendar month. We give you a way to manage it from your account, and a person you can write to if something is not right.',
+          'We review your listing, tell you the outcome, and if we reject it we tell you why. Once approved, we publish it and feature it for one calendar month. We give you a way to manage it from your account, and a person you can reach if something is not right.',
           'This form does not ask you to upload title documents. If something about a listing looks inconsistent, we may ask you for proof of ownership or authority, and we may pause the listing until you reply.',
           'Once your listing is live you can ask for up to two edits to it through your account, and our team reviews each one. For any change beyond that, contact us with the reason.'
         ]
@@ -196,8 +201,8 @@ export const TERMS = {
           'Buyer or tenant to you: the purchase price, rent or deposit is agreed and paid directly between you and them. It does not pass through Tawi Properties, we take no commission or share from it, and we do not hold it or guarantee it.'
         ],
         affirm:
-          'We will never ask a seller by phone, WhatsApp, SMS or email for a “verification”, “boost”, “release” or “unlock” fee, or for your M-Pesa PIN or any one-time code. If someone does, in our name, it is not us — please tell us at ' +
-          SUPPORT_EMAIL +
+          'We will never ask a seller by phone, WhatsApp, SMS or email for a “verification”, “boost”, “release” or “unlock” fee, or for your M-Pesa PIN or any one-time code. If someone does, in our name, it is not us — please tell us through ' +
+          CONTACT_ROUTES +
           '.'
       },
       {
@@ -249,7 +254,7 @@ export const TERMS = {
         heading: 'If we take a listing down',
         paragraphs: [
           'We can remove a listing, or suspend an account, if it breaks these terms, if we have good reason to suspect fraud, or if we are required to by law. If we suspect fraud we may hold a listing while we look into it, and where the law requires it we will share what we hold with the police or other authorities.',
-          `We will tell you the reason. If you think we got it wrong, reply to that message or write to ${SUPPORT_EMAIL} within 14 days and a person will look at it again. If the removal turns out to have been our mistake, we will republish the listing for the time it lost, or refund the fee.`
+          `We will tell you the reason. If you think we got it wrong, reply to that message or reach us through ${CONTACT_ROUTES} within 14 days and a person will look at it again. If the removal turns out to have been our mistake, we will republish the listing for the time it lost, or refund the fee.`
         ]
       },
       {
@@ -276,7 +281,7 @@ export const TERMS = {
         heading: 'Changes, disputes and contact',
         paragraphs: [
           'If we change these terms, the next listing you submit will show you the new version to accept. The version you accepted for an existing listing keeps applying to that listing.',
-          `These terms are governed by the laws of Kenya, and the courts of Kenya have jurisdiction. Please write to ${SUPPORT_EMAIL} before taking anything further. Your rights as a consumer under Kenyan law are not affected by these terms.`
+          `These terms are governed by the laws of Kenya, and the courts of Kenya have jurisdiction. Please reach us through ${CONTACT_ROUTES} before taking anything further. Your rights as a consumer under Kenyan law are not affected by these terms.`
         ]
       }
     ],
