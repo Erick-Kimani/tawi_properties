@@ -18,9 +18,9 @@
       </div>
 
       <div class="hero__copy">
-        <h1 class="hero__eyebrow">Nairobi &amp; environs</h1>
+        <h1 class="hero__eyebrow">Kenya Cities,Towns &amp; Rurals</h1>
         <h1 class="hero__headline">Addresses,<br />framed properly.</h1>
-        <p class="hero__sub">Verified listings across Karen, Kilimani, Westlands and beyond — photographed the way an agent would want them seen.</p>
+        <h3 class="hero__sub">Verified listings across all Counties in Kenya</h3>
         <!-- <a class="hero__cta" href="/listings">Browse listings</a> -->
       </div>
     </div>

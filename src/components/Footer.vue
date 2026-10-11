@@ -45,8 +45,14 @@
         </RouterLink>
         <p class="footer__tagline">Find, list, and manage property across Kenya.</p>
 
-        <!-- Plain <a href="tel:"> so tapping it dials on mobile. -->
-        <a class="footer__phone" href="tel:0180715711" aria-label="Call Tawi Properties on 0180715711">
+        <!-- Opens a WhatsApp chat with Tawi Properties in a new tab. -->
+        <a
+          class="footer__phone"
+          :href="whatsappUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          :aria-label="`Chat with Tawi Properties on WhatsApp (${displayPhone})`"
+        >
           <svg
             class="footer__phone-icon"
             viewBox="0 0 24 24"
@@ -61,7 +67,7 @@
           >
             <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.34 1.78.66 2.62a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.46-1.23a2 2 0 0 1 2.11-.45c.84.32 1.72.54 2.62.66A2 2 0 0 1 22 16.92z" />
           </svg>
-          <span>0180715711</span>
+          <span>{{ displayPhone }}</span>
         </a>
       </div>
 
@@ -73,7 +79,7 @@
         <RouterLink to="/property-map">Map</RouterLink>
       </nav>
 
-        <nav class="footer__col">
+      <nav class="footer__col">
         <p class="footer__heading">Account</p>
         <RouterLink v-if="!authStore.isAuthenticated" to="/login">Login</RouterLink>
         <RouterLink v-if="!authStore.isAuthenticated" to="/signup">Sign up</RouterLink>
@@ -85,12 +91,10 @@
         >
           {{ loggingOut ? 'Logging out…' : 'Logout' }}
         </button>
-        
-        <!-- Add the v-if condition right here -->
+
         <RouterLink v-if="authStore.user?.role?.slug === 'administrator'" to="/admin">Admin</RouterLink>
         <RouterLink to="/contact">Contact</RouterLink>
       </nav>
-
 
       <nav class="footer__col">
         <p class="footer__heading">List with us</p>
@@ -152,6 +156,16 @@ const loggingOut = ref(false)
 // null = closed; otherwise the audience whose terms are open.
 const openTerms = ref(null)
 const year = new Date().getFullYear()
+
+// Number as shown on screen.
+const displayPhone = '0180715711'
+
+// wa.me needs the number in international format: no "+", no spaces,
+// no leading 0. Kenya's country code is 254.
+// NOTE: confirm this is the number registered on WhatsApp.
+const whatsappNumber = '254180715711'
+const whatsappMessage = 'Hello Tawi Properties, I would like to make an enquiry.'
+const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`
 
 async function handleLogout() {
   if (loggingOut.value) return
@@ -311,8 +325,9 @@ async function handleLogout() {
   max-width: 30ch;
 }
 
-/* Phone number under the tagline. The icon takes the brass accent;
-   the number itself stays in the body colour and brightens on hover. */
+/* Phone number under the tagline (opens WhatsApp). The icon takes the
+   brass accent; the number itself stays in the body colour and brightens
+   on hover. */
 .footer__phone {
   display: inline-flex;
   align-items: center;

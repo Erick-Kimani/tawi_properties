@@ -28,7 +28,7 @@
           </li>
           <li>
             <span class="list-property__benefit-mark">03</span>
-            A small fee applies only if you want your property featured. For Ksh 1,200, your listing is guaranteed a featured spot for one full month.
+            Our rates are Ksh 1,200 per month for a listing period of 30 Days.
           </li>
           <li>
             <span class="list-property__benefit-mark">04</span>

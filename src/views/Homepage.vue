@@ -50,6 +50,25 @@
       </div>
     </section>
 
+    <section class="about" aria-labelledby="about-heading">
+      <div class="about__inner">
+        <h2 id="about-heading" class="about__title">About Us</h2>
+        <p class="about__text">
+          TAWI Properties is a trusted real estate platform connecting buyers,
+          sellers, landlords, and tenants across Kenya. We make it easier to find the
+          right property by bringing a wide range of properties and land together in
+          one convenient platform.
+        </p>
+        <p class="about__text">
+          Whether you are looking to buy, sell, or rent, TAWI Properties helps you
+          connect with opportunities that match your needs. We are committed to making
+          property search and listing simple, transparent, and convenient while
+          encouraging every user to carry out proper due diligence before making any
+          transaction.
+        </p>
+      </div>
+    </section>
+
     <PropertyCategories />
   </div>
 </template>
@@ -197,6 +216,39 @@ function handleSearch() {
 
 .search-strip__submit:hover { background: var(--brass-bright); }
 
+/* About Us — sits between the search strip and the category block.
+   The strip is lifted with translateY(-50px), which leaves a 50px gap
+   in the layout flow, so the top padding here is kept modest. */
+.about {
+  padding: 24px 0 8px;
+}
+
+/* Same 1320px width + gutter padding as the categories block below, so
+   the left edges of "About Us" and "What are you looking for?" line up
+   exactly at every screen size. */
+.about__inner {
+  max-width: 1320px;
+  padding: 0 var(--gutter);
+  margin: 0 auto;
+}
+
+.about__title {
+  font-family: var(--font-display, 'Playfair Display', serif);
+  font-size: 32px;
+  font-weight: 500;
+  color: var(--bone);
+  margin: 0 0 16px;
+}
+
+.about__text {
+  max-width: 760px;
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--bone-dim);
+  margin: 0 0 14px;
+}
+
 /* Tablet: the three fields fit in a row but the Search button wraps onto
    its own line — give it a full-width bar instead of a tiny pill. */
 @media (max-width: 820px) {
@@ -209,7 +261,7 @@ function handleSearch() {
 }
 
 @media (max-width: 720px) {
-  .intent-toggle__option { min-height: var(--tap); }
+  .intent-toggle__option { min-height: var(--tap, 44px); }
   .search-strip { transform: none; margin: 24px 20px 0; }
   .field { border-right: none; border-bottom: 1px solid rgba(237, 231, 218, 0.08); }
   /* Stacked layout: the first field is now the top edge of the column
@@ -228,5 +280,9 @@ function handleSearch() {
     border-bottom-left-radius: 14px;
     border-bottom-right-radius: 14px;
   }
-  }
+  /* The strip is no longer lifted on mobile, so give About a bit more
+     breathing room from it. */
+  .about { padding-top: 40px; }
+  .about__title { font-size: clamp(26px, 7vw, 32px); }
+}
 </style>
