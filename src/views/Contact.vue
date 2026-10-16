@@ -127,6 +127,7 @@ import { ref, onMounted, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import contactMessageService from '@/services/contactMessageService'
+import { useDraft } from '@/drafts/useDraft'
 
 const authStore = useAuthStore()
 const route = useRoute()
@@ -137,6 +138,14 @@ const route = useRoute()
 // someone retype what they just explained elsewhere. Purely a starting
 // point -- still a normal, editable textarea.
 const messageText = ref(typeof route.query.message === 'string' ? route.query.message : '')
+// Draft saving: keeps the half-written message across tab/page switches.
+// A ?message= prefill from another page wins over a saved draft.
+const draft = useDraft('contact-message', {
+  read: () => messageText.value,
+  apply: (saved) => { if (!messageText.value) messageText.value = saved },
+  isEmpty: (v) => !v || !v.trim()
+})
+draft.restore()
 const submitting = ref(false)
 const justSent = ref(false)
 const error = ref('')
@@ -199,6 +208,7 @@ async function handleSubmit() {
   try {
     await contactMessageService.send(messageText.value.trim())
     messageText.value = ''
+    draft.clear()
     justSent.value = true
     // Re-fetch rather than optimistically prepending — keeps the status
     // pill and any server-assigned fields (id, timestamps) accurate.

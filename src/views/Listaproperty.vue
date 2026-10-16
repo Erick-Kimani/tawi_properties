@@ -344,6 +344,7 @@ import { TERMS_VERSION } from '@/data/terms'
 import { usePropertyTypes } from '@/stores/propertyTypes'
 import { useAuthStore } from '@/stores/auth'
 import propertySubmissionService from '@/services/propertySubmissionService'
+import { useDraft } from '@/drafts/useDraft'
 
 // Flag icons for the phone field's country-code picker, from the
 // "flag-icons" package (https://www.npmjs.com/package/flag-icons).
@@ -474,6 +475,34 @@ const lastSubmittedName = ref('')
 // property, and resetForm() clears it again below.
 const acceptedTerms = ref(false)
 const termsFlagged = ref(false)
+
+// Draft saving (frontend-only, localStorage). Text fields and the map pin
+// are kept so the user can switch tabs/pages and come back. Photos
+// (File objects) and the terms checkbox are deliberately NOT saved: files
+// can't live in localStorage, and terms must be re-accepted per listing.
+const draft = useDraft('list-property', {
+  read: () => ({
+    intent: form.intent,
+    type: form.type,
+    fullName: form.fullName,
+    email: form.email,
+    phoneCountryCode: form.phoneCountryCode,
+    phone: form.phone,
+    priceRange: form.priceRange,
+    location: form.location,
+    description: form.description,
+    pin: pin.value
+  }),
+  apply: ({ pin: savedPin, ...fields }) => {
+    Object.assign(form, fields)
+    if (savedPin) pin.value = savedPin
+  },
+  isEmpty: (v) => !(v.fullName || v.email || v.phone || v.priceRange ||
+    v.location || v.description || v.pin)
+})
+// Registered before the map-return handler below so a pin/address coming
+// back from /property-map in the URL overrides the saved one.
+onMounted(() => { draft.restore() })
 
 // Keep the selected type valid once the real API list arrives (it may
 // differ from the fallback options used while loading).
@@ -641,6 +670,7 @@ async function onPaymentConfirmed({ checkoutRequestId }) {
 
     lastSubmittedName.value = form.fullName
     submitted.value = true
+    draft.clear()
     window.dispatchEvent(new Event('property-submission-created'))
   } catch (err) {
     if (err.response?.status === 401) {
@@ -655,6 +685,7 @@ async function onPaymentConfirmed({ checkoutRequestId }) {
 }
 
 function resetForm() {
+  draft.clear()
   Object.assign(form, blankForm())
   photoFiles.value = [null, null, null]
   pin.value = null
