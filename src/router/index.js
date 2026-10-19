@@ -88,7 +88,36 @@ const router = createRouter({
       path:'/contact',
       name: 'contact',
       component: Contact,
-    }
+    },
+
+    // ---- Legal pages --------------------------------------------------
+    // Public, read-only pages with their own addresses. The wording comes
+    // from src/data/terms.js and src/data/privacy.js — the same text the
+    // sign-up / list-a-property drawer shows. `meta.title` is used by the
+    // afterEach hook below.
+    {
+      path: '/terms/buyers',
+      // /terms on its own shows the buyer & tenant terms (it is the link
+      // to give anywhere a single "Terms of service" URL is asked for).
+      alias: '/terms',
+      name: 'terms-buyers',
+      component: () => import('../views/Terms.vue'),
+      props: { audience: 'general' },
+      meta: { title: 'Buyer & tenant terms' },
+    },
+    {
+      path: '/terms/sellers',
+      name: 'terms-sellers',
+      component: () => import('../views/Terms.vue'),
+      props: { audience: 'seller' },
+      meta: { title: 'Seller terms' },
+    },
+    {
+      path: '/privacy',
+      name: 'privacy',
+      component: () => import('../views/Privacy.vue'),
+      meta: { title: 'Privacy policy' },
+    },
   ],
 })
 
@@ -138,6 +167,12 @@ router.beforeEach(async (to, from, next) => {
   }
 
   return next()
+})
+
+// Give the legal pages their own browser-tab title, and put the default
+// back everywhere else (the title in index.html is just "Tawi Properties").
+router.afterEach((to) => {
+  document.title = to.meta.title ? `${to.meta.title} · Tawi Properties` : 'Tawi Properties'
 })
 
 export default router

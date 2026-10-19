@@ -555,7 +555,10 @@ function renderDisplayMarkers() {
   visibleItems.forEach((item) => {
     if (typeof item.lat !== 'number' || typeof item.lng !== 'number') return
 
-    const color = resolvePinColor(item)
+    // Only accept hex colors; anything else falls back to the default pin color
+    // so a bad value can never break out of the inline style attribute.
+    const rawColor = resolvePinColor(item)
+    const color = /^#[0-9a-f]{3,8}$/i.test(rawColor) ? rawColor : DEFAULT_PIN_COLOR
     const category = resolvePinCategory(item)
     const categoryLabel = pinLegend.find((entry) => entry.key === category)?.label || item.type || 'Property'
     const destination = String(item.listingType || item.listing_type || '').toLowerCase() === 'rent' ? '/rent' : '/buy'
@@ -626,7 +629,8 @@ function setPickerMarker(lngLat) {
 function escapeHtml(str) {
   const div = document.createElement('div')
   div.textContent = str
-  return div.innerHTML
+  // innerHTML escapes < > &; also escape quotes so the result is safe in attributes too.
+  return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;')
 }
 
 onMounted(async () => {

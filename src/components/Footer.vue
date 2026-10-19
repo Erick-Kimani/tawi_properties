@@ -102,24 +102,14 @@
       </nav>
 
       <nav class="footer__col">
-        <p class="footer__heading">Terms</p>
-        <!-- Read-only here: nothing to accept, so no checkbox. Anyone can
-             read both documents without an account, which is the point. -->
-        <button type="button" class="footer__link-btn" @click="openTerms = 'general'">
-          Buyer &amp; tenant terms
-        </button>
-        <button type="button" class="footer__link-btn" @click="openTerms = 'seller'">
-          Seller terms
-        </button>
+        <p class="footer__heading">Legal</p>
+        <!-- Real pages with their own addresses (not pop-ups), so anyone
+             can read, share and link to them without an account. -->
+        <RouterLink to="/terms/buyers">Buyer &amp; tenant terms</RouterLink>
+        <RouterLink to="/terms/sellers">Seller terms</RouterLink>
+        <RouterLink to="/privacy">Privacy policy</RouterLink>
       </nav>
     </div>
-
-    <TermsDrawer
-      :show="openTerms !== null"
-      :audience="openTerms || 'general'"
-      read-only
-      @close="openTerms = null"
-    />
 
     <div class="footer__divider" aria-hidden="true">
       <svg viewBox="0 0 240 16" class="footer__chevrons">
@@ -148,13 +138,10 @@
 import { RouterLink, useRouter } from 'vue-router'
 import { ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import TermsDrawer from '@/components/TermsDrawer.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const loggingOut = ref(false)
-// null = closed; otherwise the audience whose terms are open.
-const openTerms = ref(null)
 const year = new Date().getFullYear()
 
 // Number as shown on screen.
