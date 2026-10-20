@@ -163,7 +163,9 @@ const listings = computed(() => {
 
 .buy-hero {
   position: relative;
-  height: clamp(320px, 46vh, 460px);
+  height: clamp(400px, 62vh, 620px);
+  padding-top:110px;
+  box-sizing:border-box;
   background-image: url('/images/Picture2.jpg');
   background-size: cover;
   background-position: center;

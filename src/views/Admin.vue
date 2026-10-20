@@ -326,6 +326,9 @@
             <span class="stat__value">{{ newMessagesCount }}</span>
             <span class="stat__label">New</span>
           </div>
+          <button class="btn btn--primary" type="button" @click="openComposeModal">
+            + New message
+          </button>
         </div>
       </div>
 
@@ -380,11 +383,14 @@
             >
               <td>
                 <div class="contact">
-                  <span>{{ msg.senderName }}</span>
+                  <span>{{ msg.initiatedByAdmin ? 'To: ' : '' }}{{ msg.senderName }}</span>
                   <span class="contact__phone">{{ msg.senderEmail }}</span>
                 </div>
               </td>
               <td class="admin__message-text">
+                <span v-if="msg.initiatedByAdmin" class="admin__message-reply-label">
+                  You started this conversation
+                </span>
                 {{ msg.message }}
                 <div v-if="msg.replies.length" class="admin__message-thread">
                   <p
@@ -463,6 +469,79 @@
           </button>
           <button type="button" class="btn btn--primary" @click="submitReply" :disabled="replySending">
             {{ replySending ? 'Sending…' : 'Send reply' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Compose modal — admin starts a conversation with a user/seller -->
+    <div v-if="composeOpen" class="reply-modal__backdrop" @click.self="closeComposeModal">
+      <div class="reply-modal" role="dialog" aria-modal="true" aria-labelledby="compose-modal-title">
+        <h3 id="compose-modal-title">New message</h3>
+
+        <div v-if="!composeRecipient">
+          <input
+            v-model="recipientSearch"
+            class="compose__search"
+            type="search"
+            placeholder="Search by name or email…"
+            aria-label="Search users"
+          />
+          <div class="admin__filters compose__filters">
+            <button
+              v-for="r in recipientRoleFilters"
+              :key="r.value"
+              type="button"
+              class="filter-pill"
+              :class="{ 'filter-pill--active': recipientRole === r.value }"
+              @click="recipientRole = r.value"
+            >
+              {{ r.label }}
+            </button>
+          </div>
+
+          <p v-if="recipientsLoading" class="admin__status-text">Loading…</p>
+          <ul v-else-if="recipients.length" class="compose__list">
+            <li v-for="u in recipients" :key="u.id">
+              <button type="button" class="compose__user" @click="composeRecipient = u">
+                <span>{{ u.name }}</span>
+                <span class="contact__phone">{{ u.email }}</span>
+                <span class="compose__role">{{ u.role?.name }}</span>
+              </button>
+            </li>
+          </ul>
+          <p v-else class="admin__status-text">No users match.</p>
+        </div>
+
+        <div v-else>
+          <p class="reply-modal__original">
+            To: <strong>{{ composeRecipient.name }}</strong> ({{ composeRecipient.email }})
+            <button type="button" class="compose__change" @click="composeRecipient = null">
+              Change
+            </button>
+          </p>
+          <textarea
+            v-model="composeText"
+            rows="5"
+            placeholder="Write your message…"
+            :disabled="composeSending"
+          ></textarea>
+        </div>
+
+        <p v-if="composeError" class="field__error">{{ composeError }}</p>
+
+        <div class="reply-modal__actions">
+          <button type="button" class="btn btn--ghost" @click="closeComposeModal" :disabled="composeSending">
+            Cancel
+          </button>
+          <button
+            v-if="composeRecipient"
+            type="button"
+            class="btn btn--primary"
+            @click="submitCompose"
+            :disabled="composeSending"
+          >
+            {{ composeSending ? 'Sending…' : 'Send message' }}
           </button>
         </div>
       </div>
@@ -1029,6 +1108,7 @@ function mapMessage(m) {
     senderName: m.sender?.name || 'Unknown',
     senderEmail: m.sender?.email || '',
     message: m.message,
+    initiatedByAdmin: !!m.initiated_by_admin,
     // Full back-and-forth thread — both the admin's replies and any
     // follow-ups from the sender, oldest first (matches the backend's
     // `replies()` ordering). Each entry: { id, body, isAdmin, authorName, createdAt }.
@@ -1138,6 +1218,82 @@ async function submitReply() {
       || 'Could not send this reply. Please try again.'
   } finally {
     replySending.value = false
+  }
+}
+
+// --- Compose modal (admin starts a conversation) ---------------------------
+const composeOpen = ref(false)
+const composeRecipient = ref(null)
+const composeText = ref('')
+const composeSending = ref(false)
+const composeError = ref('')
+
+const recipients = ref([])
+const recipientsLoading = ref(false)
+const recipientSearch = ref('')
+const recipientRole = ref('')
+const recipientRoleFilters = [
+  { label: 'All', value: '' },
+  { label: 'Sellers', value: 'seller' },
+  { label: 'Users', value: 'user' }
+]
+
+async function loadRecipients() {
+  recipientsLoading.value = true
+  try {
+    const { data } = await contactMessageService.getRecipients({
+      search: recipientSearch.value.trim() || undefined,
+      role: recipientRole.value || undefined
+    })
+    recipients.value = data
+  } catch (e) {
+    composeError.value = 'Could not load users. Please try again.'
+  } finally {
+    recipientsLoading.value = false
+  }
+}
+
+function openComposeModal() {
+  composeOpen.value = true
+  composeRecipient.value = null
+  composeText.value = ''
+  composeError.value = ''
+  recipientSearch.value = ''
+  recipientRole.value = ''
+  loadRecipients()
+}
+
+function closeComposeModal() {
+  if (composeSending.value) return
+  composeOpen.value = false
+}
+
+let recipientTimer = null
+watch([recipientSearch, recipientRole], () => {
+  if (!composeOpen.value) return
+  clearTimeout(recipientTimer)
+  recipientTimer = setTimeout(loadRecipients, 250)
+})
+
+async function submitCompose() {
+  const text = composeText.value.trim()
+  if (text.length < 2) {
+    composeError.value = 'Please write a message before sending.'
+    return
+  }
+
+  composeSending.value = true
+  composeError.value = ''
+  try {
+    const { data } = await contactMessageService.start(composeRecipient.value.id, text)
+    messages.value.unshift(mapMessage(data.contact_message))
+    composeOpen.value = false
+  } catch (e) {
+    composeError.value = e.response?.data?.error
+      || e.response?.data?.message
+      || 'Could not send this message. Please try again.'
+  } finally {
+    composeSending.value = false
   }
 }
 
@@ -1966,5 +2122,54 @@ tbody tr:hover { background: rgba(237, 231, 218, 0.03); }
 
 .admin__edit-slots span {
   margin-right: 8px;
+}
+
+/* ---------- Compose modal ---------- */
+.compose__search {
+  width: 100%;
+  background: var(--ink);
+  border: 1px solid rgba(237, 231, 218, 0.15);
+  border-radius: 4px;
+  color: var(--bone);
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+}
+.compose__filters { margin-bottom: 10px; }
+.compose__list {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.compose__user {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid rgba(237, 231, 218, 0.08);
+  color: var(--bone);
+  padding: 10px 6px;
+  cursor: pointer;
+}
+.compose__user:hover { background: rgba(237, 231, 218, 0.05); }
+.compose__role {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brass);
+}
+.compose__change {
+  margin-left: 8px;
+  background: none;
+  border: 0;
+  color: var(--brass);
+  cursor: pointer;
+  text-decoration: underline;
 }
 </style>

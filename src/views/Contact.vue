@@ -64,6 +64,9 @@
                 <span class="status-pill" :class="'status-pill--' + t.status">{{ t.status }}</span>
                 <span class="contact__thread-date">{{ t.createdAt }}</span>
               </div>
+              <p v-if="t.initiatedByAdmin" class="contact__threads-label">
+                Tawi Properties
+              </p>
               <p class="contact__thread-message">{{ t.message }}</p>
 
               <div v-if="t.replies.length" class="contact__thread-replies">
@@ -158,6 +161,7 @@ function mapThread(m) {
   return {
     id: m.id,
     message: m.message,
+    initiatedByAdmin: !!m.initiated_by_admin,
     status: m.status,
     createdAt: m.created_at ? m.created_at.slice(0, 10) : '',
     replies: (m.replies || []).map((r) => ({

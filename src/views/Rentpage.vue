@@ -168,7 +168,9 @@ const listings = computed(() => {
 
 .rent-hero {
   position: relative;
-  height: clamp(320px, 46vh, 460px);
+  height: clamp(460px, 62vh, 620px);
+  padding-top:110px;
+  box-sizing:border-box;
   background-image: url('/images/Picture6.jpg');
   background-size: cover;
   background-position: center;
@@ -179,7 +181,7 @@ const listings = computed(() => {
 .rent-hero__scrim {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(15, 19, 24, 0.5) 0%, rgba(15, 19, 24, 0.5) 45%, rgba(15, 19, 24, 0.97) 100%);
+  background: linear-gradient(180deg, rgba(15, 19, 24, 0.5) 0%, rgba(15, 19, 24, 0.5) 70%, rgba(15, 19, 24, 0.97) 100%);
 }
 
 .rent-hero__inner {
@@ -221,7 +223,7 @@ const listings = computed(() => {
   position: relative;
   z-index: 10;
   margin: 0 var(--gutter);
-  transform: translateY(-46px);
+  transform: translateY(-90px);
 }
 
 .rent-toolbar {

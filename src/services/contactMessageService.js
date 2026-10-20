@@ -37,6 +37,12 @@ export const contactMessageService = {
   // Not an email — the sender sees it next time they view the thread.
   reply(id, replyText) {
     return apiClient.put(`/contact-messages/${id}/reply`, { reply: replyText })
+  },
+  getRecipients(params) {
+    return apiClient.get('/contact-messages/recipients', { params })
+  },
+  start(userId, message) {
+    return apiClient.post('/contact-messages/start', { user_id: userId, message })
   }
 }
 
